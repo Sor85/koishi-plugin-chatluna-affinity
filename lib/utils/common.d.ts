@@ -1,0 +1,33 @@
+export declare const clamp: (value: number, min: number, max: number) => number;
+export declare const clampFloat: (value: number, min: number, max: number) => number;
+export declare const isFiniteNumber: (value: unknown) => value is number;
+export declare const stripAtPrefix: (text: string | unknown) => string;
+export declare const sanitizeChannel: (value: unknown) => string;
+export declare const pad: (n: number) => string;
+export declare const formatTimestamp: (value: unknown) => string;
+export declare const formatBeijingTimestamp: (date: Date) => string;
+export declare const formatDateOnly: (value: unknown) => string;
+export declare const formatDateTime: (value: unknown) => string;
+export declare const normalizeTimestamp: (value: unknown) => number | null;
+export declare function pickFirst<T>(...values: (T | undefined | null)[]): T | undefined;
+export declare const toDate: (value: unknown) => Date | null;
+export declare const MAGIC_NUMBERS: {
+    ANALYSIS_TIMEOUT: number;
+    BOT_REPLY_DELAY: number;
+    SCHEDULE_RETRY_DELAY: number;
+    SCHEDULE_CHECK_INTERVAL: number;
+    HISTORY_LIMIT_MULTIPLIER: number;
+    MIN_HISTORY_LIMIT: number;
+    RANK_FETCH_MULTIPLIER: number;
+    RANK_FETCH_OFFSET: number;
+    MAX_RANK_FETCH: number;
+    VIEWPORT_WIDTH: number;
+    VIEWPORT_BASE_HEIGHT: number;
+    VIEWPORT_ROW_HEIGHT: number;
+};
+export declare const constants: {
+    DEFAULT_MIN: number;
+    DEFAULT_MAX: number;
+    DEFAULT_INITIAL_MIN: number;
+    DEFAULT_INITIAL_MAX: number;
+};
