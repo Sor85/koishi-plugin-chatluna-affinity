@@ -135,12 +135,14 @@ const BlacklistSchema = Schema.object({
   enableAutoBlacklist: Schema.boolean().default(false).description('当综合好感度低于阈值时自动拉黑用户'),
   blacklistThreshold: Schema.number().default(0).description('综合好感度低于该值时触发自动拉黑'),
   blacklistLogInterception: Schema.boolean().default(true).description('拦截消息时输出日志'),
+  autoBlacklistReply: Schema.string().default('').description('自动拉黑触发时的回复模板，可用变量：{{nickname}} {{@user}}。留空则不回复'),
   shortTermBlacklist: Schema.object({
     enabled: Schema.boolean().default(false).description('启用临时拉黑（按 decrease 次数触发临时屏蔽）'),
     windowHours: Schema.number().default(24).min(1).description('统计 decrease 次数的时间窗口（小时）'),
     decreaseThreshold: Schema.number().default(15).min(1).description('窗口内 decrease 次数达到该值时触发临时拉黑'),
     durationHours: Schema.number().default(12).min(1).description('临时拉黑持续的小时数'),
-    penalty: Schema.number().default(5).min(0).description('触发临时拉黑时额外扣减的长期好感度')
+    penalty: Schema.number().default(5).min(0).description('触发临时拉黑时额外扣减的长期好感度'),
+    replyTemplate: Schema.string().default('').description('临时拉黑触发时的回复模板，可用变量：{{nickname}} {{@user}} {{duration}} {{penalty}}。留空则不回复')
   })
     .description('临时拉黑设置')
     .collapse(),

@@ -20,6 +20,36 @@ import {
   computeShortTermReset
 } from '../core/dynamics'
 
+// 获取用户的群昵称
+async function resolveGroupNickname(session: Session): Promise<string> {
+  const fallback = session?.username || session?.userId || ''
+  try {
+    const bot = session?.bot as { internal?: { getGroupMemberInfo?: Function; getGuildMember?: Function }; getGuildMember?: Function } | undefined
+    const guildId = (session as unknown as { guildId?: string })?.guildId || session?.channelId
+    const userId = session?.userId
+    if (!bot || !guildId || !userId) return fallback
+
+    let member: Record<string, unknown> | null = null
+    // 尝试获取群成员信息
+    if (bot.internal?.getGroupMemberInfo) {
+      member = await bot.internal.getGroupMemberInfo(guildId, userId, false).catch(() => null)
+    } else if (bot.internal?.getGuildMember) {
+      member = await bot.internal.getGuildMember(guildId, userId).catch(() => null)
+    } else if (bot.getGuildMember) {
+      member = await bot.getGuildMember(guildId, userId).catch(() => null)
+    }
+
+    if (!member) return fallback
+
+    // 优先使用群名片(card)，其次是昵称
+    const card = member.card || (member.user as Record<string, unknown>)?.card
+    const nick = member.nickname || member.nick || (member.user as Record<string, unknown>)?.nickname || (member.user as Record<string, unknown>)?.nick
+    return String(card || nick || fallback).trim() || fallback
+  } catch {
+    return fallback
+  }
+}
+
 interface MiddlewareDeps {
   store: AffinityStore
   history: { fetch: (session: Session) => Promise<string[]> }
@@ -246,19 +276,24 @@ export function createAnalysisMiddleware(ctx: Context, config: Config, deps: Mid
     try {
       const manual = store.findManualRelationship(session.platform, session.userId)
       const fallback = manual && typeof manual.initialAffinity === 'number' ? manual.initialAffinity : undefined
+      const hasManualOverride = fallback !== undefined
+      // 特殊关系不受 clamp 限制，可以突破好感度上下限
+      const conditionalClamp = (value: number) => hasManualOverride ? Math.round(value) : store.clamp(value)
       const result = await store.ensure(session, clampValue, fallback)
       const now = new Date()
       const storedShortTerm = Number(result.shortTermAffinity ?? 0)
       const storedLongTerm = Number(result.longTermAffinity ?? result.affinity ?? 0)
       const baselineShortTerm = Math.round(storedShortTerm)
-      const baselineState = store.composeState(storedLongTerm, baselineShortTerm)
+      const baselineState = hasManualOverride
+        ? { affinity: Math.round(storedLongTerm), longTermAffinity: Math.round(storedLongTerm), shortTermAffinity: baselineShortTerm }
+        : store.composeState(storedLongTerm, baselineShortTerm)
       let longTermTarget = baselineState.longTermAffinity
       const initialLongTerm = longTermTarget
       const initialShortTerm = baselineShortTerm
       const previousCoefficient = Number.isFinite(result.coefficientState?.coefficient)
         ? result.coefficientState.coefficient
         : coefficientRules.base
-      const computedComposite = store.clamp(previousCoefficient * longTermTarget)
+      const computedComposite = conditionalClamp(previousCoefficient * longTermTarget)
       const storedComposite = Number.isFinite((result as unknown as { affinityOverride?: number }).affinityOverride)
         ? Math.round((result as unknown as { affinityOverride: number }).affinityOverride)
         : computedComposite
@@ -425,12 +460,25 @@ export function createAnalysisMiddleware(ctx: Context, config: Config, deps: Mid
               longTermShift -= temporaryPenaltyApplied
               longTermChanged = true
             }
+            // 发送临时拉黑自动回复
+            const replyTemplate = config.shortTermBlacklist?.replyTemplate
+            if (replyTemplate) {
+              const groupNickname = await resolveGroupNickname(session)
+              const replyText = replyTemplate
+                .replace(/\{\{nickname\}\}/g, groupNickname || session.userId)
+                .replace(/\{\{@user\}\}/g, `<at id="${session.userId}"/>`)
+                .replace(/\{\{duration\}\}/g, String(shortTermOptions.durationHours))
+                .replace(/\{\{penalty\}\}/g, String(temporaryPenaltyApplied))
+              session.send?.(replyText).catch(() => {})
+            }
           }
         }
       }
 
-      const combinedState = store.composeState(longTermTarget, workingShortTerm)
-      const nextCompositeAffinity = store.clamp(nextCoefficientState.coefficient * combinedState.longTermAffinity)
+      const combinedState = hasManualOverride
+        ? { affinity: Math.round(longTermTarget), longTermAffinity: Math.round(longTermTarget), shortTermAffinity: Math.round(workingShortTerm) }
+        : store.composeState(longTermTarget, workingShortTerm)
+      const nextCompositeAffinity = conditionalClamp(nextCoefficientState.coefficient * combinedState.longTermAffinity)
       const shortTermChanged = combinedState.shortTermAffinity !== result.shortTermAffinity || appliedDelta !== 0
       const hasChanges = needsCompositeRepair || (nextCompositeAffinity !== oldAffinity) || shortTermChanged || longTermChanged
       const actionEntries = appendActionEntry(result.actionStats?.entries, actionType, nowMs, actionWindow.maxEntries)
@@ -491,7 +539,18 @@ export function createAnalysisMiddleware(ctx: Context, config: Config, deps: Mid
 
       if (config.enableAutoBlacklist && nextCompositeAffinity < config.blacklistThreshold) {
         const resultBlack = await tryBlacklistUser(ctx, session, store, cache, log)
-        if (resultBlack?.recorded) temporaryManager.clear(session.platform, session.userId)
+        if (resultBlack?.recorded) {
+          temporaryManager.clear(session.platform, session.userId)
+          // 发送自动拉黑自动回复
+          const replyTemplate = config.autoBlacklistReply
+          if (replyTemplate) {
+            const groupNickname = await resolveGroupNickname(session)
+            const replyText = replyTemplate
+              .replace(/\{\{nickname\}\}/g, groupNickname || session.userId)
+              .replace(/\{\{@user\}\}/g, `<at id="${session.userId}"/>`)
+            session.send?.(replyText).catch(() => {})
+          }
+        }
       }
     } catch (error) {
       log('warn', '分析流程异常', error)

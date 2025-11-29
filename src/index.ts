@@ -481,20 +481,45 @@ export function apply(ctx: Context, config: ConfigType): void {
       if (platform) conditions.platform = platform
       if (session?.selfId) conditions.selfId = session.selfId
 
-      const fetchLimit = Math.min(Math.max(limit * 5, limit + 20), 200)
-      const rows = await ctx.database.select(MODEL_NAME).where(conditions).orderBy('affinity', 'desc').limit(fetchLimit).execute()
-      if (!rows.length) return '当前暂无好感度记录。'
+      type AffinityRow = { userId: string; nickname: string | null; relation: string | null; affinity: number }
+      let scopedRows: AffinityRow[] = []
 
-      let scopedRows = rows
       if (groupId) {
+        // 群聊模式：先获取群成员列表，再分批查询直到满足条件
         const memberIds = await fetchGroupMemberIds(session as Session)
         if (!memberIds || memberIds.size === 0) {
           return '无法获取本群成员列表，暂时无法展示排行。'
         }
-        scopedRows = rows.filter((row) => memberIds.has(stripAtPrefix(row.userId))).slice(0, limit)
+
+        // 分批查询，每次最多500条，直到找到足够的群成员或遍历完所有记录
+        const batchSize = 500
+        let offset = 0
+        let hasMore = true
+
+        while (scopedRows.length < limit && hasMore) {
+          const batch = await ctx.database.select(MODEL_NAME).where(conditions).orderBy('affinity', 'desc').limit(batchSize).offset(offset).execute()
+          if (!batch.length) {
+            hasMore = false
+            break
+          }
+
+          for (const row of batch) {
+            if (memberIds.has(stripAtPrefix(row.userId))) {
+              scopedRows.push(row as AffinityRow)
+              if (scopedRows.length >= limit) break
+            }
+          }
+
+          offset += batchSize
+          if (batch.length < batchSize) hasMore = false
+        }
+
         if (!scopedRows.length) return '本群暂无好感度记录。'
       } else {
-        scopedRows = rows.slice(0, limit)
+        // 非群聊模式：直接查询
+        const rows = await ctx.database.select(MODEL_NAME).where(conditions).orderBy('affinity', 'desc').limit(limit).execute()
+        if (!rows.length) return '当前暂无好感度记录。'
+        scopedRows = rows as AffinityRow[]
       }
 
       // 解析群昵称
@@ -509,11 +534,11 @@ export function apply(ctx: Context, config: ConfigType): void {
         }
         return { name, relation: row.relation || '——', affinity: row.affinity }
       }))
-      const textLines = ['用户名 关系 好感度', ...lines.map((item, index) => `${index + 1}. ${item.name} ${item.relation} ${item.affinity}`)]
+      const textLines = ['群昵称 关系 好感度', ...lines.map((item, index) => `${index + 1}. ${item.name} ${item.relation} ${item.affinity}`)]
 
       if (shouldRenderImage) {
         const tableRows = lines.map((item, index) => [`${index + 1}`, item.name, item.relation, String(item.affinity)])
-        const buffer = await renderTableImage('好感度排行', ['排名', '用户名', '关系', '好感度'], tableRows)
+        const buffer = await renderTableImage('好感度排行', ['排名', '群昵称', '关系', '好感度'], tableRows)
         if (buffer) return h.image(buffer, 'image/png')
         ctx.logger?.('chatluna-affinity')?.warn?.('排行榜图片渲染失败或服务缺失，已改为文本输出')
         return textLines.join('\n')

@@ -61,12 +61,14 @@ export declare const Config: Schema<{
     enableAutoBlacklist?: boolean | null | undefined;
     blacklistThreshold?: number | null | undefined;
     blacklistLogInterception?: boolean | null | undefined;
+    autoBlacklistReply?: string | null | undefined;
     shortTermBlacklist?: ({
         enabled?: boolean | null | undefined;
         windowHours?: number | null | undefined;
         decreaseThreshold?: number | null | undefined;
         durationHours?: number | null | undefined;
         penalty?: number | null | undefined;
+        replyTemplate?: string | null | undefined;
     } & import("koishi").Dict) | null | undefined;
     autoBlacklist?: ({
         userId?: string | null | undefined;
@@ -216,12 +218,14 @@ export declare const Config: Schema<{
     enableAutoBlacklist: boolean;
     blacklistThreshold: number;
     blacklistLogInterception: boolean;
+    autoBlacklistReply: string;
     shortTermBlacklist: Schemastery.ObjectT<{
         enabled: Schema<boolean, boolean>;
         windowHours: Schema<number, number>;
         decreaseThreshold: Schema<number, number>;
         durationHours: Schema<number, number>;
         penalty: Schema<number, number>;
+        replyTemplate: Schema<string, string>;
     }>;
     autoBlacklist: Schemastery.ObjectT<{
         userId: Schema<string, string>;

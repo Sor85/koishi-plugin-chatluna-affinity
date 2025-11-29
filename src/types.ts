@@ -77,7 +77,7 @@ export interface RelationshipLevel { min: number; max: number; relation: string;
 export interface ManualRelationship { initialAffinity: number | null; userId: string; relation: string; note?: string }
 export interface BlacklistEntry { platform: string; userId: string; blockedAt: string; nickname?: string; note: string; channelId?: string }
 export interface TemporaryBlacklistEntry { platform: string; userId: string; blockedAt: string; expiresAt: string; nickname?: string; note: string; channelId?: string; durationHours: number | string; penalty: number | string }
-export interface ShortTermBlacklistConfig { enabled: boolean; windowHours?: number; decreaseThreshold?: number; durationHours?: number; penalty?: number }
+export interface ShortTermBlacklistConfig { enabled: boolean; windowHours?: number; decreaseThreshold?: number; durationHours?: number; penalty?: number; replyTemplate?: string }
 export interface ScheduleConfig { enabled: boolean; variableName: string; currentVariableName: string; timezone: string; registerTool: boolean; renderAsImage: boolean; startDelay: number; toolName: string; prompt: string; title?: string }
 export interface UserInfoConfig { variableName: string; items: string[] }
 export interface BotInfoConfig { variableName: string; items: string[] }
@@ -101,6 +101,7 @@ export interface Config {
   enableAutoBlacklist: boolean
   blacklistThreshold: number
   blacklistLogInterception: boolean
+  autoBlacklistReply: string
   autoBlacklist: BlacklistEntry[]
   temporaryBlacklist: TemporaryBlacklistEntry[]
   shortTermBlacklist: ShortTermBlacklistConfig

@@ -23,36 +23,51 @@ export function createAffinityProvider({ config, cache, store }: ProviderDeps) {
   return async (_args: unknown, _variables: unknown, configurable?: ProviderConfigurable): Promise<number> => {
     const session = configurable?.session
     if (!session?.platform || !session?.userId) {
-      return store.clamp(store.defaultInitial())
+      return store.defaultInitial()
     }
 
     // 先尝试从缓存获取（缓存中存储的是计算后的综合好感度）
     const cached = cache.get(session.platform, session.userId)
-    if (cached !== null) return store.clamp(cached)
+    if (cached !== null) return cached
 
-    // 从数据库加载并计算综合好感度
+    // 检查是否有手动配置的特殊关系（可能突破上限）
     const manual = store.findManualRelationship(session.platform, session.userId)
-    const override = manual && typeof manual.initialAffinity === 'number' ? manual.initialAffinity : undefined
-    const record = await store.ensure(
-      session as Parameters<typeof store.ensure>[0],
-      (value, lo, hi) => Math.min(hi, Math.max(lo, value)),
-      override
-    )
+    const hasManualOverride = manual && typeof manual.initialAffinity === 'number'
+
+    // 从数据库加载记录（不自动创建）
+    const record = await store.load(session.platform, session.userId)
+
+    // 如果没有记录，返回默认初始值或手动配置的值
+    if (!record) {
+      const fallback = hasManualOverride ? manual.initialAffinity! : store.defaultInitial()
+      cache.set(session.platform, session.userId, fallback)
+      return fallback
+    }
 
     // 如果有保存的综合好感度覆盖值，直接使用
     const affinityOverride = (record as unknown as { affinityOverride?: number }).affinityOverride
     if (typeof affinityOverride === 'number') {
-      cache.set(session.platform, session.userId, affinityOverride)
-      return store.clamp(affinityOverride)
+      // 特殊关系不受 clamp 限制
+      const result = hasManualOverride ? affinityOverride : store.clamp(affinityOverride)
+      cache.set(session.platform, session.userId, result)
+      return result
     }
 
     // 否则根据长期好感度和系数计算综合好感度
     const longTermAffinity = record.longTermAffinity ?? record.affinity ?? 0
-    const coefficient = record.coefficientState?.coefficient ?? config.affinityDynamics?.coefficient?.base ?? 1.0
+    let coefficient = config.affinityDynamics?.coefficient?.base ?? 1.0
+    if (record.coefficientState) {
+      try {
+        const parsed = typeof record.coefficientState === 'string' ? JSON.parse(record.coefficientState) : record.coefficientState
+        if (typeof parsed?.coefficient === 'number') coefficient = parsed.coefficient
+      } catch { /* ignore */ }
+    }
     const compositeAffinity = Math.round(coefficient * longTermAffinity)
 
-    cache.set(session.platform, session.userId, compositeAffinity)
-    return store.clamp(compositeAffinity)
+    // 特殊关系不受 clamp 限制
+    const result = hasManualOverride ? compositeAffinity : store.clamp(compositeAffinity)
+    cache.set(session.platform, session.userId, result)
+    return result
   }
 }
 

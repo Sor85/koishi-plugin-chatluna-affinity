@@ -131,6 +131,7 @@ export interface ShortTermBlacklistConfig {
     decreaseThreshold?: number;
     durationHours?: number;
     penalty?: number;
+    replyTemplate?: string;
 }
 export interface ScheduleConfig {
     enabled: boolean;
@@ -179,6 +180,7 @@ export interface Config {
     enableAutoBlacklist: boolean;
     blacklistThreshold: number;
     blacklistLogInterception: boolean;
+    autoBlacklistReply: string;
     autoBlacklist: BlacklistEntry[];
     temporaryBlacklist: TemporaryBlacklistEntry[];
     shortTermBlacklist: ShortTermBlacklistConfig;
