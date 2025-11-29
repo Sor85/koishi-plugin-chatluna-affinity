@@ -104,7 +104,7 @@ const he = /* @__PURE__ */ A(ce, [["render", ue]]), fe = ["onClick"], me = ["onC
         { name: ((R = e.schedule) == null ? void 0 : R.currentVariableName) || "currentSchedule", key: "currentSchedule", enabled: t },
         { name: (l == null ? void 0 : l.variableName) || "userInfo", key: "userInfo", enabled: (l == null ? void 0 : l.enabled) !== !1 },
         { name: (i == null ? void 0 : i.variableName) || "botInfo", key: "botInfo", enabled: (i == null ? void 0 : i.enabled) !== !1 },
-        { name: (u == null ? void 0 : u.variableName) || "groupInfo", key: "groupInfo", enabled: !!(u != null && u.enabled) },
+        { name: (u == null ? void 0 : u.variableName) || "groupInfo", key: "groupInfo", enabled: (u == null ? void 0 : u.enabled) !== !1 },
         { name: (a == null ? void 0 : a.variableName) || "random", key: "random", enabled: (a == null ? void 0 : a.enabled) !== !1 }
       ].filter((Q) => !!Q);
     }), _ = C(""), w = C(""), H = (e) => {

@@ -9,6 +9,7 @@ import { createLogger } from './utils/logger'
 import { renderTemplate } from './utils/template'
 import { createAffinityStore, MODEL_NAME } from './core/store'
 import { createHistoryManager } from './services/history'
+import { createMessageStore } from './services/message-store'
 import { createAffinityCache } from './core/cache'
 import { createAffinityProvider, createRelationshipProvider, createContextAffinityProvider } from './core/providers'
 import { createToolRegistry, createOneBotPokeTool, createOneBotSetSelfProfileTool, createDeleteMessageTool } from './tools/tools'
@@ -60,6 +61,7 @@ export function apply(ctx: Context, config: ConfigType): void {
   const cache = createAffinityCache()
   const store = createAffinityStore(ctx, config, log)
   const history = createHistoryManager(ctx, config, log)
+  const messageStore = createMessageStore(ctx, log, 100)
   const renderTableImage = createRenderTableImage(ctx)
 
   const shortTermOptions = (() => {
@@ -411,7 +413,7 @@ export function apply(ctx: Context, config: ConfigType): void {
 
     if (config.enableDeleteMessageTool) {
       const toolName = String(config.deleteMessageToolName || 'delete_msg').trim() || 'delete_msg'
-      plugin.registerTool(toolName, { selector: () => true, authorization: (session: Session | undefined) => session?.platform === 'onebot', createTool: () => createDeleteMessageTool({ ctx, toolName }) })
+      plugin.registerTool(toolName, { selector: () => true, authorization: (session: Session | undefined) => session?.platform === 'onebot', createTool: () => createDeleteMessageTool({ ctx, toolName, messageStore }) })
     }
 
     const registry = createToolRegistry(config, store, cache)

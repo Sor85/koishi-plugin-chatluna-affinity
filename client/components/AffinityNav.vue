@@ -264,7 +264,7 @@ const allVariables = computed<VariableItem[]>(() => {
         { name: cfg.schedule?.currentVariableName || 'currentSchedule', key: 'currentSchedule', enabled: scheduleEnabled },
         { name: userInfo?.variableName || 'userInfo', key: 'userInfo', enabled: userInfo?.enabled !== false },
         { name: botInfo?.variableName || 'botInfo', key: 'botInfo', enabled: botInfo?.enabled !== false },
-        { name: groupInfo?.variableName || 'groupInfo', key: 'groupInfo', enabled: !!groupInfo?.enabled },
+        { name: groupInfo?.variableName || 'groupInfo', key: 'groupInfo', enabled: groupInfo?.enabled !== false },
         { name: random?.variableName || 'random', key: 'random', enabled: random?.enabled !== false }
     ].filter((item): item is VariableItem => Boolean(item))
 })

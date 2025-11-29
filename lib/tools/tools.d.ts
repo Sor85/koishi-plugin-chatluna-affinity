@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Context } from 'koishi';
+import type { Context, Session } from 'koishi';
 import type { Config, AffinityStore, AffinityCache } from '../types';
 interface OneBotToolDeps {
     ctx: Context;
@@ -59,18 +59,46 @@ export declare function createOneBotSetSelfProfileTool({ ctx, toolName }: OneBot
     invoke<TInput extends any, TConfig extends import("@langchain/core/tools").ToolRunnableConfig | undefined>(input: TInput, config?: TConfig | undefined): Promise<any>;
     call<TArg extends any, TConfig extends import("@langchain/core/tools").ToolRunnableConfig | undefined>(arg: TArg, configArg?: TConfig | undefined, tags?: string[]): Promise<any>;
 };
-export declare function createDeleteMessageTool({ ctx, toolName }: OneBotToolDeps): {
+interface DeleteMessageToolDeps extends OneBotToolDeps {
+    messageStore?: {
+        findByLastN: (session: Session, lastN: number, userId?: string) => {
+            messageId: string;
+            userId: string;
+            username: string;
+            content: string;
+        } | null;
+        findByContent: (session: Session, keyword: string, userId?: string) => {
+            messageId: string;
+            userId: string;
+            username: string;
+            content: string;
+        } | null;
+    };
+}
+export declare function createDeleteMessageTool({ ctx, toolName, messageStore }: DeleteMessageToolDeps): {
     name: string;
     description: string;
     schema: z.ZodObject<{
         messageId: z.ZodOptional<z.ZodString>;
+        lastN: z.ZodOptional<z.ZodNumber>;
+        userId: z.ZodOptional<z.ZodString>;
+        contentMatch: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
+        userId?: string | undefined;
         messageId?: string | undefined;
+        lastN?: number | undefined;
+        contentMatch?: string | undefined;
     }, {
+        userId?: string | undefined;
         messageId?: string | undefined;
+        lastN?: number | undefined;
+        contentMatch?: string | undefined;
     }>;
     _call(input: {
         messageId?: string;
+        lastN?: number;
+        userId?: string;
+        contentMatch?: string;
     }, _manager?: unknown, runnable?: unknown): Promise<string>;
     returnDirect: boolean;
     verboseParsingErrors: boolean;

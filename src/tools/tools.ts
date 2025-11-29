@@ -261,47 +261,100 @@ export function createOneBotSetSelfProfileTool({ ctx, toolName }: OneBotToolDeps
   })()
 }
 
-export function createDeleteMessageTool({ ctx, toolName }: OneBotToolDeps) {
+interface DeleteMessageToolDeps extends OneBotToolDeps {
+  messageStore?: {
+    findByLastN: (session: Session, lastN: number, userId?: string) => { messageId: string; userId: string; username: string; content: string } | null
+    findByContent: (session: Session, keyword: string, userId?: string) => { messageId: string; userId: string; username: string; content: string } | null
+  }
+}
+
+export function createDeleteMessageTool({ ctx, toolName, messageStore }: DeleteMessageToolDeps) {
   const logger = ctx?.logger?.('chatluna-affinity') as { info?: Function; warn?: Function } | undefined
   // @ts-expect-error - Type instantiation depth issue with zod + StructuredTool
   return new (class extends StructuredTool {
     name = toolName || 'delete_msg'
-    description = 'Deletes (recalls) a message by message ID or the message currently quoted.'
+    description = `Deletes (recalls) a message. You can specify the message by:
+1. messageId: directly provide the message ID
+2. lastN: delete the Nth most recent message (1 = most recent). Can combine with userId to target a specific user.
+3. contentMatch: delete the most recent message containing this keyword. Can combine with userId.
+4. If none provided, will try to use the quoted message.
+As a group admin, you can delete messages from any user.`
     schema = z.object({
-      messageId: z.string().optional().describe('Optional: specific message ID to delete. Defaults to the quoted message.')
+      messageId: z.string().optional().describe('Specific message ID to delete.'),
+      lastN: z.number().int().min(1).optional().describe('Delete the Nth most recent message (1 = latest). Example: 1 to delete the latest message, 2 for second latest.'),
+      userId: z.string().optional().describe('Target user ID. Use with lastN or contentMatch to delete a specific user\'s message.'),
+      contentMatch: z.string().optional().describe('Delete the most recent message containing this keyword/phrase.')
     })
-    async _call(input: { messageId?: string }, _manager?: unknown, runnable?: unknown) {
+    async _call(input: { messageId?: string; lastN?: number; userId?: string; contentMatch?: string }, _manager?: unknown, runnable?: unknown) {
       try {
         const session = getSession(runnable)
         if (!session) return 'No session context available.'
-        const resolvedMessageId =
-          (typeof input.messageId === 'string' && input.messageId.trim()) ||
-          (session as unknown as { quote?: { id?: string } })?.quote?.id ||
-          (session as unknown as { event?: { quote?: { messageId?: string }; message?: { id?: string } } })?.event?.quote?.messageId ||
-          (session as unknown as { event?: { message?: { id?: string } } })?.event?.message?.id ||
-          ''
-        if (!resolvedMessageId) {
-          return 'No messageId provided and no quoted message found. Please quote the target message or provide messageId.'
+
+        let resolvedMessageId = ''
+        let matchInfo = ''
+
+        // 优先级: messageId > lastN > contentMatch > quoted message
+        if (typeof input.messageId === 'string' && input.messageId.trim()) {
+          resolvedMessageId = input.messageId.trim()
+          matchInfo = `by ID ${resolvedMessageId}`
+        } else if (input.lastN && input.lastN > 0 && messageStore) {
+          const found = messageStore.findByLastN(session, input.lastN, input.userId)
+          if (found) {
+            resolvedMessageId = found.messageId
+            const userInfo = input.userId ? ` from user ${found.username}(${found.userId})` : ''
+            matchInfo = `#${input.lastN} recent message${userInfo}: "${found.content.slice(0, 30)}${found.content.length > 30 ? '...' : ''}"`
+          } else {
+            const userHint = input.userId ? ` from user ${input.userId}` : ''
+            return `No message found at position ${input.lastN}${userHint}.`
+          }
+        } else if (input.contentMatch && messageStore) {
+          const found = messageStore.findByContent(session, input.contentMatch, input.userId)
+          if (found) {
+            resolvedMessageId = found.messageId
+            const userInfo = input.userId ? ` from user ${found.username}(${found.userId})` : ''
+            matchInfo = `matching "${input.contentMatch}"${userInfo}: "${found.content.slice(0, 30)}${found.content.length > 30 ? '...' : ''}"`
+          } else {
+            const userHint = input.userId ? ` from user ${input.userId}` : ''
+            return `No message found containing "${input.contentMatch}"${userHint}.`
+          }
+        } else {
+          // 回退到 quoted message
+          resolvedMessageId =
+            (session as unknown as { quote?: { id?: string } })?.quote?.id ||
+            (session as unknown as { event?: { quote?: { messageId?: string }; message?: { id?: string } } })?.event?.quote?.messageId ||
+            (session as unknown as { event?: { message?: { id?: string } } })?.event?.message?.id ||
+            ''
+          if (resolvedMessageId) {
+            matchInfo = 'quoted message'
+          }
         }
+
+        if (!resolvedMessageId) {
+          return 'No message found to delete. Please provide messageId, use lastN/contentMatch to search, or quote a message.'
+        }
+
         const messageIdRaw = resolvedMessageId.trim()
         const numericId = /^\d+$/.test(messageIdRaw) ? Number(messageIdRaw) : messageIdRaw
+
         if (session.platform === 'onebot') {
           const { error, internal } = ensureOneBotSession(session)
           if (error) return error
           await callOneBotAPI(internal!, 'delete_msg', { message_id: numericId }, ['deleteMsg'])
-          const success = `Message ${messageIdRaw} deleted.`
+          const success = `Message deleted (${matchInfo}).`
           logger?.info?.(success)
           return success
         }
+
         const bot = session.bot as unknown as { deleteMessage?: Function }
         if (typeof bot?.deleteMessage === 'function') {
           const channelId = session.channelId || (session as unknown as { guildId?: string })?.guildId || (session as unknown as { roomId?: string })?.roomId || (session as unknown as { channel?: { id?: string } })?.channel?.id || ''
           if (!channelId) return 'Cannot determine channel to delete message.'
           await bot.deleteMessage(channelId, messageIdRaw)
-          const success = `Message ${messageIdRaw} deleted.`
+          const success = `Message deleted (${matchInfo}).`
           logger?.info?.(success)
           return success
         }
+
         return 'Delete message is not supported on this platform.'
       } catch (error) {
         logger?.warn?.('delete_msg failed', error)
