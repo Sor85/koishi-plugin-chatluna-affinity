@@ -108,6 +108,41 @@ export declare function createDeleteMessageTool({ ctx, toolName, messageStore }:
     invoke<TInput extends any, TConfig extends import("@langchain/core/tools").ToolRunnableConfig | undefined>(input: TInput, config?: TConfig | undefined): Promise<any>;
     call<TArg extends any, TConfig extends import("@langchain/core/tools").ToolRunnableConfig | undefined>(arg: TArg, configArg?: TConfig | undefined, tags?: string[]): Promise<any>;
 };
+interface PanSouToolDeps {
+    ctx: Context;
+    toolName: string;
+    apiUrl: string;
+    authEnabled: boolean;
+    username: string;
+    password: string;
+    defaultCloudTypes: string[];
+    maxResults: number;
+}
+export declare function createPanSouSearchTool({ ctx, toolName, apiUrl, authEnabled, username, password, defaultCloudTypes, maxResults }: PanSouToolDeps): {
+    name: string;
+    description: string;
+    schema: z.ZodObject<{
+        keyword: z.ZodString;
+        cloudTypes: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        keyword: string;
+        cloudTypes?: string[] | undefined;
+    }, {
+        keyword: string;
+        cloudTypes?: string[] | undefined;
+    }>;
+    _call(input: {
+        keyword: string;
+        cloudTypes?: string[];
+    }): Promise<string>;
+    returnDirect: boolean;
+    verboseParsingErrors: boolean;
+    get lc_namespace(): string[];
+    responseFormat?: import("@langchain/core/tools").ResponseFormat;
+    defaultConfig?: import("@langchain/core/tools").ToolRunnableConfig;
+    invoke<TInput extends any, TConfig extends import("@langchain/core/tools").ToolRunnableConfig | undefined>(input: TInput, config?: TConfig | undefined): Promise<any>;
+    call<TArg extends any, TConfig extends import("@langchain/core/tools").ToolRunnableConfig | undefined>(arg: TArg, configArg?: TConfig | undefined, tags?: string[]): Promise<any>;
+};
 export declare function createToolRegistry(config: Config, store: AffinityStore, cache: AffinityCache): {
     affinitySelector: () => boolean;
     relationshipSelector: () => boolean;

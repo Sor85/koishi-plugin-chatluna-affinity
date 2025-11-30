@@ -97,6 +97,11 @@ interface Config {
     setSelfProfileToolName?: string
     enableDeleteMessageTool?: boolean
     deleteMessageToolName?: string
+    // 网盘搜索工具
+    panSouTool?: {
+        enablePanSouTool?: boolean
+        panSouToolName?: string
+    }
 }
 
 interface NavSection {
@@ -239,7 +244,8 @@ const allTools = computed<ToolItem[]>(() => {
         { name: '获取今日日程', enableKey: 'schedule.registerTool', enabled: !!cfg.schedule?.registerTool },
         { name: '戳一戳', enableKey: 'enablePokeTool', enabled: !!cfg.enablePokeTool },
         { name: '修改账户信息', enableKey: 'enableSetSelfProfileTool', enabled: !!cfg.enableSetSelfProfileTool },
-        { name: '撤回消息', enableKey: 'enableDeleteMessageTool', enabled: !!cfg.enableDeleteMessageTool }
+        { name: '撤回消息', enableKey: 'enableDeleteMessageTool', enabled: !!cfg.enableDeleteMessageTool },
+        { name: '网盘搜索', enableKey: 'panSouTool.enablePanSouTool', enabled: !!cfg.panSouTool?.enablePanSouTool }
     ]
 })
 
@@ -302,28 +308,18 @@ const toNavSection = (nav: NavSection) => {
 const toToolItem = (tool: ToolItem) => {
     activeItem.value = 'tool-' + tool.enableKey
     activeSection.value = ''
-    
+
     const keyParts = tool.enableKey.split('.')
-    const targetKey = keyParts[keyParts.length - 1]
-    
+    const searchKeys = keyParts.length > 1
+        ? [keyParts.join('.'), keyParts[keyParts.length - 1], keyParts[0]].filter(Boolean)
+        : [tool.enableKey]
+
     const nodes = document.querySelectorAll('.k-schema-left')
     for (let i = 0; i < nodes.length; i++) {
         const item = nodes[i] as HTMLElement
         const text = item.textContent || ''
-        if (text.includes(targetKey)) {
-            if (keyParts.length > 1) {
-                const parent = keyParts[0]
-                let parentNode = item.parentElement
-                let found = false
-                while (parentNode && !found) {
-                    const parentText = parentNode.textContent || ''
-                    if (parentText.includes(parent) && parentText.includes(targetKey)) {
-                        found = true
-                    }
-                    parentNode = parentNode.parentElement
-                }
-                if (!found) continue
-            }
+        const matched = searchKeys.some((key) => key && text.includes(key))
+        if (matched) {
             item.scrollIntoView({ behavior: 'smooth', block: 'center' })
             return
         }

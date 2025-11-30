@@ -309,7 +309,32 @@ const OneBotToolsSchema = Schema.object({
   enableSetSelfProfileTool: Schema.boolean().default(false).description('注册 ChatLuna 工具：修改自身账户信息'),
   setSelfProfileToolName: Schema.string().default('set_self_profile').description('ChatLuna 工具名称：修改自身账户信息（支持昵称/签名/性别）'),
   enableDeleteMessageTool: Schema.boolean().default(false).description('注册 ChatLuna 工具：撤回消息'),
-  deleteMessageToolName: Schema.string().default('delete_msg').description('ChatLuna 工具名称：撤回消息')
+  deleteMessageToolName: Schema.string().default('delete_msg').description('ChatLuna 工具名称：撤回消息'),
+  panSouTool: Schema.object({
+    enablePanSouTool: Schema.boolean().default(false).description('注册 ChatLuna 工具：网盘搜索'),
+    panSouToolName: Schema.string().default('pansou_search').description('ChatLuna 工具名称：网盘搜索'),
+    panSouApiUrl: Schema.string().default('http://localhost:8888').description('PanSou API 地址'),
+    panSouAuthEnabled: Schema.boolean().default(false).description('是否启用 PanSou 认证'),
+    panSouUsername: Schema.string().default('').description('PanSou 认证用户名'),
+    panSouPassword: Schema.string().role('secret').default('').description('PanSou 认证密码'),
+    panSouDefaultCloudTypes: Schema.array(
+      Schema.union([
+        Schema.const('baidu').description('百度网盘'),
+        Schema.const('aliyun').description('阿里云盘'),
+        Schema.const('quark').description('夸克网盘'),
+        Schema.const('tianyi').description('天翼云盘'),
+        Schema.const('uc').description('UC网盘'),
+        Schema.const('mobile').description('移动云盘'),
+        Schema.const('115').description('115网盘'),
+        Schema.const('pikpak').description('PikPak'),
+        Schema.const('xunlei').description('迅雷网盘'),
+        Schema.const('123').description('123网盘'),
+        Schema.const('magnet').description('磁力链接'),
+        Schema.const('ed2k').description('电驴链接')
+      ])
+    ).role('checkbox').default([]).description('默认返回的网盘类型（为空则返回所有类型）'),
+    panSouMaxResults: Schema.number().default(5).min(1).max(20).description('每种网盘类型最大返回结果数')
+  }).description('网盘搜索工具').collapse()
 }).description('其他工具')
 
 export const Config = Schema.intersect([

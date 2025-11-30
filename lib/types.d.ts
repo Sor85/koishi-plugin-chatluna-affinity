@@ -214,6 +214,16 @@ export interface Config {
     blacklistDefaultLimit: number;
     blacklistRenderAsImage: boolean;
     schedule: ScheduleConfig;
+    panSouTool: {
+        enablePanSouTool: boolean;
+        panSouToolName: string;
+        panSouApiUrl: string;
+        panSouAuthEnabled: boolean;
+        panSouUsername: string;
+        panSouPassword: string;
+        panSouDefaultCloudTypes: string[];
+        panSouMaxResults: number;
+    };
     otherVariables?: {
         userInfo?: UserInfoConfig;
         botInfo?: BotInfoConfig;

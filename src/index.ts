@@ -12,7 +12,7 @@ import { createHistoryManager } from './services/history'
 import { createMessageStore } from './services/message-store'
 import { createAffinityCache } from './core/cache'
 import { createAffinityProvider, createRelationshipProvider, createContextAffinityProvider } from './core/providers'
-import { createToolRegistry, createOneBotPokeTool, createOneBotSetSelfProfileTool, createDeleteMessageTool } from './tools/tools'
+import { createToolRegistry, createOneBotPokeTool, createOneBotSetSelfProfileTool, createDeleteMessageTool, createPanSouSearchTool } from './tools/tools'
 import { createAnalysisMiddleware } from './middlewares/analysis'
 import { createScheduleManager } from './services/schedule'
 import { stripAtPrefix, formatTimestamp } from './utils/common'
@@ -428,6 +428,24 @@ export function apply(ctx: Context, config: ConfigType): void {
     if (config.registerBlacklistTool) {
       const toolName = String(config.blacklistToolName || 'adjust_blacklist').trim() || 'adjust_blacklist'
       plugin.registerTool(toolName, { selector: registry.blacklistSelector, createTool: registry.createBlacklistTool })
+    }
+
+    const panSouCfg = config.panSouTool || {}
+    if (panSouCfg.enablePanSouTool) {
+      const toolName = String(panSouCfg.panSouToolName || 'pansou_search').trim() || 'pansou_search'
+      plugin.registerTool(toolName, {
+        selector: () => true,
+        createTool: () => createPanSouSearchTool({
+          ctx,
+          toolName,
+          apiUrl: panSouCfg.panSouApiUrl || 'http://localhost:8888',
+          authEnabled: panSouCfg.panSouAuthEnabled || false,
+          username: panSouCfg.panSouUsername || '',
+          password: panSouCfg.panSouPassword || '',
+          defaultCloudTypes: panSouCfg.panSouDefaultCloudTypes || [],
+          maxResults: panSouCfg.panSouMaxResults || 5
+        })
+      })
     }
 
     scheduleManager.registerVariables()

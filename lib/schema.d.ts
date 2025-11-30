@@ -147,6 +147,16 @@ export declare const Config: Schema<{
     setSelfProfileToolName?: string | null | undefined;
     enableDeleteMessageTool?: boolean | null | undefined;
     deleteMessageToolName?: string | null | undefined;
+    panSouTool?: ({
+        enablePanSouTool?: boolean | null | undefined;
+        panSouToolName?: string | null | undefined;
+        panSouApiUrl?: string | null | undefined;
+        panSouAuthEnabled?: boolean | null | undefined;
+        panSouUsername?: string | null | undefined;
+        panSouPassword?: string | null | undefined;
+        panSouDefaultCloudTypes?: ("baidu" | "aliyun" | "quark" | "tianyi" | "uc" | "mobile" | "115" | "pikpak" | "xunlei" | "123" | "magnet" | "ed2k")[] | null | undefined;
+        panSouMaxResults?: number | null | undefined;
+    } & import("koishi").Dict) | null | undefined;
 }, {
     affinityVariableName: string;
     contextAffinityOverview: Schemastery.ObjectT<{
@@ -304,5 +314,15 @@ export declare const Config: Schema<{
     setSelfProfileToolName: string;
     enableDeleteMessageTool: boolean;
     deleteMessageToolName: string;
+    panSouTool: Schemastery.ObjectT<{
+        enablePanSouTool: Schema<boolean, boolean>;
+        panSouToolName: Schema<string, string>;
+        panSouApiUrl: Schema<string, string>;
+        panSouAuthEnabled: Schema<boolean, boolean>;
+        panSouUsername: Schema<string, string>;
+        panSouPassword: Schema<string, string>;
+        panSouDefaultCloudTypes: Schema<("baidu" | "aliyun" | "quark" | "tianyi" | "uc" | "mobile" | "115" | "pikpak" | "xunlei" | "123" | "magnet" | "ed2k")[], ("baidu" | "aliyun" | "quark" | "tianyi" | "uc" | "mobile" | "115" | "pikpak" | "xunlei" | "123" | "magnet" | "ed2k")[]>;
+        panSouMaxResults: Schema<number, number>;
+    }>;
 }>;
 export {};

@@ -364,6 +364,180 @@ As a group admin, you can delete messages from any user.`
   })()
 }
 
+interface PanSouToolDeps {
+  ctx: Context
+  toolName: string
+  apiUrl: string
+  authEnabled: boolean
+  username: string
+  password: string
+  defaultCloudTypes: string[]
+  maxResults: number
+}
+
+interface PanSouMergedLink {
+  url: string
+  password?: string
+  note?: string
+  datetime?: string
+  source?: string
+}
+
+interface PanSouResponseData {
+  total?: number
+  merged_by_type?: Record<string, PanSouMergedLink[]>
+  results?: unknown[]
+}
+
+interface PanSouResponse {
+  data?: PanSouResponseData
+  total?: number
+  merged_by_type?: Record<string, PanSouMergedLink[]>
+  results?: unknown[]
+  error?: string
+  code?: number
+  message?: string
+}
+
+export function createPanSouSearchTool({ ctx, toolName, apiUrl, authEnabled, username, password, defaultCloudTypes, maxResults }: PanSouToolDeps) {
+  const logger = ctx?.logger?.('chatluna-affinity') as { info?: Function; warn?: Function; debug?: Function } | undefined
+  let cachedToken: string | null = null
+  let tokenExpiry: number = 0
+
+  async function getToken(): Promise<string | null> {
+    if (!authEnabled) return null
+    if (cachedToken && Date.now() < tokenExpiry) return cachedToken
+
+    try {
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+      const data = await response.json() as { token?: string; expires_at?: number; error?: string }
+      if (data.token) {
+        cachedToken = data.token
+        tokenExpiry = (data.expires_at || Date.now() / 1000 + 3600) * 1000 - 60000
+        return cachedToken
+      }
+      logger?.warn?.('PanSou 认证失败', data.error)
+      return null
+    } catch (error) {
+      logger?.warn?.('PanSou 认证请求失败', error)
+      return null
+    }
+  }
+
+  const cloudTypeNames: Record<string, string> = {
+    baidu: '百度网盘',
+    aliyun: '阿里云盘',
+    quark: '夸克网盘',
+    tianyi: '天翼云盘',
+    uc: 'UC网盘',
+    mobile: '移动云盘',
+    '115': '115网盘',
+    pikpak: 'PikPak',
+    xunlei: '迅雷网盘',
+    '123': '123网盘',
+    magnet: '磁力链接',
+    ed2k: '电驴链接',
+    others: '其他'
+  }
+
+  // @ts-expect-error - Type instantiation depth issue with zod + StructuredTool
+  return new (class extends StructuredTool {
+    name = toolName || 'pansou_search'
+    description = `Search for cloud storage resources (网盘资源). Supports Baidu, Aliyun, Quark, Tianyi, UC, 115, PikPak, Xunlei, 123 cloud drives and magnet/ed2k links. Use this tool when users ask for movies, TV shows, music, software, e-books or other downloadable resources.`
+    schema = z.object({
+      keyword: z.string().min(1, 'Search keyword is required').describe('The search keyword for finding resources (e.g., movie name, TV show name, software name)'),
+      cloudTypes: z.array(z.string()).optional().describe('Optional: specific cloud types to search (baidu, aliyun, quark, tianyi, uc, mobile, 115, pikpak, xunlei, 123, magnet, ed2k). Leave empty for all types.')
+    })
+
+    async _call(input: { keyword: string; cloudTypes?: string[] }): Promise<string> {
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (authEnabled) {
+          const token = await getToken()
+          if (token) headers['Authorization'] = `Bearer ${token}`
+        }
+
+        const cloudTypes = input.cloudTypes?.length ? input.cloudTypes : (defaultCloudTypes.length ? defaultCloudTypes : undefined)
+        const requestBody: Record<string, unknown> = {
+          kw: input.keyword,
+          res: 'merge'
+        }
+        if (cloudTypes) requestBody.cloud_types = cloudTypes
+
+        logger?.info?.(`PanSou 搜索请求: keyword=${input.keyword}, apiUrl=${apiUrl}, cloudTypes=${JSON.stringify(cloudTypes)}`)
+        logger?.info?.(`PanSou 请求体: ${JSON.stringify(requestBody)}`)
+
+        const response = await fetch(`${apiUrl}/api/search`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(requestBody)
+        })
+
+        const responseText = await response.text()
+        logger?.info?.(`PanSou 原始响应 (status=${response.status}): ${responseText.slice(0, 2000)}`)
+
+        let data: PanSouResponse
+        try {
+          data = JSON.parse(responseText) as PanSouResponse
+        } catch (e) {
+          logger?.warn?.('PanSou 响应解析失败', e)
+          return `搜索失败: 响应解析错误`
+        }
+
+        // 兼容两种响应格式: { data: { merged_by_type } } 或 { merged_by_type }
+        const responseData = data.data || data
+        logger?.info?.(`PanSou 响应字段: total=${responseData.total}, merged_by_type keys=${Object.keys(responseData.merged_by_type || {}).join(',')}, results count=${responseData.results?.length || 0}`)
+
+        if (data.error || (data.code && data.code !== 200 && data.code !== 0)) {
+          return `搜索失败: ${data.error || data.message || '未知错误'}`
+        }
+
+        const mergedByType = responseData.merged_by_type
+        if (!mergedByType || Object.keys(mergedByType).length === 0) {
+          logger?.warn?.(`PanSou 未找到结果, 完整响应: ${JSON.stringify(data).slice(0, 1000)}`)
+          return `未找到"${input.keyword}"的相关资源。`
+        }
+
+        const results: string[] = [`🔍 "${input.keyword}" 的搜索结果：\n`]
+        let totalCount = 0
+
+        for (const [cloudType, links] of Object.entries(mergedByType)) {
+          if (!links || links.length === 0) continue
+          const typeName = cloudTypeNames[cloudType] || cloudType
+          const limitedLinks = links.slice(0, maxResults)
+          
+          results.push(`\n📁 ${typeName} (${links.length} 个结果):`)
+          for (const link of limitedLinks) {
+            totalCount++
+            const title = link.note || '未知资源'
+            const pwd = link.password ? ` | 密码: ${link.password}` : ''
+            results.push(`  • ${title}`)
+            results.push(`    链接: ${link.url}${pwd}`)
+          }
+          if (links.length > maxResults) {
+            results.push(`  ... 还有 ${links.length - maxResults} 个结果`)
+          }
+        }
+
+        if (totalCount === 0) {
+          return `未找到"${input.keyword}"的相关资源。`
+        }
+
+        results.push(`\n共找到 ${responseData.total || totalCount} 个资源`)
+        logger?.info?.(`PanSou 搜索完成: ${input.keyword}, 共 ${totalCount} 个结果`)
+        return results.join('\n')
+      } catch (error) {
+        logger?.warn?.('PanSou 搜索失败', error)
+        return `网盘搜索失败: ${(error as Error).message}`
+      }
+    }
+  })()
+}
+
 export function createToolRegistry(config: Config, store: AffinityStore, cache: AffinityCache) {
   const shortTermCfg = config.shortTermBlacklist || {}
   const options: ToolOptions = {
