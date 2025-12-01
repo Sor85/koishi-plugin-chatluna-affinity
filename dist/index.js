@@ -1,4 +1,4 @@
-import { createElementBlock as m, openBlock as f, createElementVNode as h, defineComponent as D, ref as K, computed as q, reactive as Z, onUnmounted as ee, inject as X, onMounted as te, watch as ne, normalizeStyle as oe, normalizeClass as r, createVNode as P, withModifiers as x, Fragment as M, renderList as V, toDisplayString as A, createCommentVNode as Y, createBlock as se } from "vue";
+import { createElementBlock as f, openBlock as m, createElementVNode as h, defineComponent as D, ref as K, computed as q, reactive as Z, onUnmounted as ee, inject as X, onMounted as te, watch as ne, normalizeStyle as oe, normalizeClass as r, createVNode as P, withModifiers as x, Fragment as M, renderList as V, toDisplayString as A, createCommentVNode as Y, createBlock as se } from "vue";
 const E = (v, c) => {
   const b = v.__vccOpts || v;
   for (const [T, s] of c)
@@ -11,7 +11,7 @@ const E = (v, c) => {
   height: "20"
 };
 function ie(v, c) {
-  return f(), m("svg", ae, [...c[0] || (c[0] = [
+  return m(), f("svg", ae, [...c[0] || (c[0] = [
     h("path", {
       d: "M288 224c0-35.3 28.7-64 64-64s64 28.7 64 64-28.7 64-64 64-64-28.7-64-64zm320 0c0-35.3 28.7-64 64-64s64 28.7 64 64-28.7 64-64 64-64-28.7-64-64zM288 512c0-35.3 28.7-64 64-64s64 28.7 64 64-28.7 64-64 64-64-28.7-64-64zm320 0c0-35.3 28.7-64 64-64s64 28.7 64 64-28.7 64-64 64-64-28.7-64-64zM352 864c-35.3 0-64-28.7-64-64s28.7-64 64-64 64 28.7 64 64-28.7 64-64 64zm320 0c-35.3 0-64-28.7-64-64s28.7-64 64-64 64 28.7 64 64-28.7 64-64 64z",
       fill: "currentColor"
@@ -25,14 +25,14 @@ const re = /* @__PURE__ */ E(le, [["render", ie]]), ce = {}, de = {
   height: "20"
 };
 function ue(v, c) {
-  return f(), m("svg", de, [...c[0] || (c[0] = [
+  return m(), f("svg", de, [...c[0] || (c[0] = [
     h("path", {
       d: "M831.872 340.864 512 652.672 192.128 340.864a30.592 30.592 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.592 30.592 0 0 0-42.752 0z",
       fill: "currentColor"
     }, null, -1)
   ])]);
 }
-const he = /* @__PURE__ */ E(ce, [["render", ue]]), fe = ["onClick"], me = ["onClick"], ye = ["onClick"], ge = /* @__PURE__ */ D({
+const he = /* @__PURE__ */ E(ce, [["render", ue]]), me = ["onClick"], fe = ["onClick"], ye = ["onClick"], ge = /* @__PURE__ */ D({
   __name: "AffinityNav",
   setup(v) {
     const c = K(!1), b = (e) => {
@@ -78,6 +78,7 @@ const he = /* @__PURE__ */ E(ce, [["render", ue]]), fe = ["onClick"], me = ["onC
       { title: "日程设置", key: "schedule" },
       { title: "其他变量", key: "otherVariables" },
       { title: "其他工具", key: "otherTools" },
+      { title: "其他指令", key: "otherCommands" },
       { title: "其他设置", key: "otherSettings" }
     ], W = q(() => {
       var n, t, o;
@@ -93,10 +94,10 @@ const he = /* @__PURE__ */ E(ce, [["render", ue]]), fe = ["onClick"], me = ["onC
         { name: "网盘搜索", enableKey: "panSouTool.enablePanSouTool", enabled: !!((o = e.panSouTool) != null && o.enablePanSouTool) }
       ] : [];
     }), F = q(() => {
-      var u, k, C, N, _, L, R, z;
+      var u, k, S, N, _, L, R, z;
       const e = (u = y == null ? void 0 : y.value) == null ? void 0 : u.config;
       if (!e) return [];
-      const n = e.enableAffinityAnalysis !== !1, t = ((k = e.schedule) == null ? void 0 : k.enabled) !== !1, o = e.contextAffinityOverview, l = e.userInfo || ((C = e.otherVariables) == null ? void 0 : C.userInfo), a = e.botInfo || ((N = e.otherVariables) == null ? void 0 : N.botInfo), d = e.groupInfo || ((_ = e.otherVariables) == null ? void 0 : _.groupInfo), i = (L = e.otherVariables) == null ? void 0 : L.random;
+      const n = e.enableAffinityAnalysis !== !1, t = ((k = e.schedule) == null ? void 0 : k.enabled) !== !1, o = e.contextAffinityOverview, l = e.userInfo || ((S = e.otherVariables) == null ? void 0 : S.userInfo), a = e.botInfo || ((N = e.otherVariables) == null ? void 0 : N.botInfo), d = e.groupInfo || ((_ = e.otherVariables) == null ? void 0 : _.groupInfo), i = (L = e.otherVariables) == null ? void 0 : L.random;
       return [
         { name: e.affinityVariableName || "affinity", key: "affinity", enabled: n },
         o != null && o.variableName ? { name: o.variableName, key: "contextAffinity", enabled: n } : null,
@@ -117,6 +118,7 @@ const he = /* @__PURE__ */ E(ce, [["render", ue]]), fe = ["onClick"], me = ["onC
         schedule: "日程设置",
         otherVariables: "其他变量",
         otherTools: "其他工具",
+        otherCommands: "其他指令",
         otherSettings: "其他设置"
       }, t = document.querySelectorAll(".k-schema-header");
       for (let o = 0; o < t.length; o++) {
@@ -171,11 +173,11 @@ const he = /* @__PURE__ */ E(ce, [["render", ue]]), fe = ["onClick"], me = ["onC
       }
     };
     let g = null;
-    const S = /* @__PURE__ */ new Map(), B = () => {
-      g && (g.disconnect(), S.clear()), g = new IntersectionObserver((t) => {
+    const C = /* @__PURE__ */ new Map(), B = () => {
+      g && (g.disconnect(), C.clear()), g = new IntersectionObserver((t) => {
         for (const o of t)
           if (o.isIntersecting) {
-            const l = S.get(o.target);
+            const l = C.get(o.target);
             l && (w.value = l, p.value = "");
           }
       }, { root: null, rootMargin: "-20% 0px -60% 0px", threshold: 0 });
@@ -186,13 +188,14 @@ const he = /* @__PURE__ */ E(ce, [["render", ue]]), fe = ["onClick"], me = ["onC
         日程设置: "schedule",
         其他变量: "otherVariables",
         其他工具: "otherTools",
+        其他指令: "otherCommands",
         其他设置: "otherSettings"
       };
       document.querySelectorAll(".k-schema-header").forEach((t) => {
         const o = t.textContent || "";
         for (const [l, a] of Object.entries(e))
           if (o.includes(l)) {
-            g == null || g.observe(t), S.set(t, a);
+            g == null || g.observe(t), C.set(t, a);
             break;
           }
       });
@@ -206,7 +209,7 @@ const he = /* @__PURE__ */ E(ce, [["render", ue]]), fe = ["onClick"], me = ["onC
       setTimeout(B, 500);
     }, { deep: !0 });
     const J = () => ({ container: "container" });
-    return (e, n) => (f(), m("div", {
+    return (e, n) => (m(), f("div", {
       class: r([e.$style.container, c.value ? e.$style.collapsed : ""]),
       style: oe(T.value)
     }, [
@@ -232,15 +235,15 @@ const he = /* @__PURE__ */ E(ce, [["render", ue]]), fe = ["onClick"], me = ["onC
       h("div", {
         class: r(e.$style.body)
       }, [
-        (f(), m(M, null, V(j, (t) => h("div", {
+        (m(), f(M, null, V(j, (t) => h("div", {
           key: t.key,
           class: r([e.$style.item, w.value === t.key ? e.$style.active : ""]),
           onClick: (o) => H(t)
-        }, A(t.title), 11, fe)), 64)),
+        }, A(t.title), 11, me)), 64)),
         h("div", {
           class: r(e.$style.divider)
         }, "可用工具", 2),
-        (f(!0), m(M, null, V(W.value, (t) => (f(), m("div", {
+        (m(!0), f(M, null, V(W.value, (t) => (m(), f("div", {
           key: "tool-" + t.enableKey,
           class: r([e.$style.item, e.$style.toolItem, p.value === "tool-" + t.enableKey ? e.$style.active : ""]),
           onClick: (o) => U(t)
@@ -248,7 +251,7 @@ const he = /* @__PURE__ */ E(ce, [["render", ue]]), fe = ["onClick"], me = ["onC
           h("span", {
             class: r(e.$style.toolIndicator)
           }, [
-            t.enabled ? (f(), m("span", {
+            t.enabled ? (m(), f("span", {
               key: 0,
               class: r(e.$style.indicatorOn)
             }, null, 2)) : Y("", !0)
@@ -256,11 +259,11 @@ const he = /* @__PURE__ */ E(ce, [["render", ue]]), fe = ["onClick"], me = ["onC
           h("span", {
             class: r(e.$style.toolName)
           }, A(t.name), 3)
-        ], 10, me))), 128)),
+        ], 10, fe))), 128)),
         h("div", {
           class: r(e.$style.divider)
         }, "可用变量", 2),
-        (f(!0), m(M, null, V(F.value, (t) => (f(), m("div", {
+        (m(!0), f(M, null, V(F.value, (t) => (m(), f("div", {
           key: "var-" + t.key,
           class: r([e.$style.item, e.$style.toolItem, p.value === "var-" + t.key ? e.$style.active : ""]),
           onClick: (o) => G(t)
@@ -268,10 +271,10 @@ const he = /* @__PURE__ */ E(ce, [["render", ue]]), fe = ["onClick"], me = ["onC
           h("span", {
             class: r(e.$style.toolIndicator)
           }, [
-            t.enabled ? (f(), m("span", {
+            t.enabled ? (m(), f("span", {
               key: 0,
               class: r(e.$style.indicatorOn)
-            }, null, 2)) : (f(), m("span", {
+            }, null, 2)) : (m(), f("span", {
               key: 1,
               class: r(e.$style.indicatorOff)
             }, null, 2))
@@ -283,7 +286,7 @@ const he = /* @__PURE__ */ E(ce, [["render", ue]]), fe = ["onClick"], me = ["onC
       ], 2)
     ], 6));
   }
-}), ve = "_container_q7rwa_2", be = "_header_q7rwa_21", pe = "_move_q7rwa_36", we = "_toggle_q7rwa_45", ke = "_body_q7rwa_56", _e = "_collapsed_q7rwa_67", Te = "_divider_q7rwa_79", $e = "_item_q7rwa_88", Ie = "_active_q7rwa_103", Ke = "_empty_q7rwa_108", Se = "_toolItem_q7rwa_114", Ce = "_toolIndicator_q7rwa_119", Ne = "_indicatorOn_q7rwa_127", qe = "_indicatorOff_q7rwa_134", Me = "_toolName_q7rwa_141", Ve = {
+}), ve = "_container_q7rwa_2", be = "_header_q7rwa_21", pe = "_move_q7rwa_36", we = "_toggle_q7rwa_45", ke = "_body_q7rwa_56", _e = "_collapsed_q7rwa_67", Te = "_divider_q7rwa_79", $e = "_item_q7rwa_88", Ie = "_active_q7rwa_103", Ke = "_empty_q7rwa_108", Ce = "_toolItem_q7rwa_114", Se = "_toolIndicator_q7rwa_119", Ne = "_indicatorOn_q7rwa_127", qe = "_indicatorOff_q7rwa_134", Me = "_toolName_q7rwa_141", Ve = {
   container: ve,
   header: be,
   move: pe,
@@ -294,8 +297,8 @@ const he = /* @__PURE__ */ E(ce, [["render", ue]]), fe = ["onClick"], me = ["onC
   item: $e,
   active: Ie,
   empty: Ke,
-  toolItem: Se,
-  toolIndicator: Ce,
+  toolItem: Ce,
+  toolIndicator: Se,
   indicatorOn: Ne,
   indicatorOff: qe,
   toolName: Me
@@ -305,7 +308,7 @@ const he = /* @__PURE__ */ E(ce, [["render", ue]]), fe = ["onClick"], me = ["onC
   __name: "AffinityDetailsLoader",
   setup(v) {
     const c = X("plugin:name"), b = K((c == null ? void 0 : c.value) === "koishi-plugin-chatluna-affinity");
-    return (T, s) => b.value ? (f(), se(Ee, { key: 0 })) : Y("", !0);
+    return (T, s) => b.value ? (m(), se(Ee, { key: 0 })) : Y("", !0);
   }
 }), Le = (v) => {
   v.slot({

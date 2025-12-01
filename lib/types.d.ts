@@ -132,6 +132,7 @@ export interface ShortTermBlacklistConfig {
     durationHours?: number;
     penalty?: number;
     replyTemplate?: string;
+    renderAsImage?: boolean;
 }
 export interface ScheduleConfig {
     enabled: boolean;
@@ -230,6 +231,8 @@ export interface Config {
         groupInfo?: GroupInfoConfig;
         random?: RandomConfig;
     };
+    groupListRenderAsImage?: boolean;
+    inspectRenderAsImage?: boolean;
 }
 export interface AffinityState {
     affinity: number;

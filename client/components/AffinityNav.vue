@@ -230,6 +230,7 @@ const navSections: NavSection[] = [
     { title: '日程设置', key: 'schedule' },
     { title: '其他变量', key: 'otherVariables' },
     { title: '其他工具', key: 'otherTools' },
+    { title: '其他指令', key: 'otherCommands' },
     { title: '其他设置', key: 'otherSettings' }
 ]
 
@@ -290,6 +291,7 @@ const toNavSection = (nav: NavSection) => {
         schedule: '日程设置',
         otherVariables: '其他变量',
         otherTools: '其他工具',
+        otherCommands: '其他指令',
         otherSettings: '其他设置'
     }
     
@@ -403,6 +405,7 @@ const initScrollSpy = () => {
         '日程设置': 'schedule',
         '其他变量': 'otherVariables',
         '其他工具': 'otherTools',
+        '其他指令': 'otherCommands',
         '其他设置': 'otherSettings'
     }
 

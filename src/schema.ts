@@ -142,7 +142,8 @@ const BlacklistSchema = Schema.object({
     decreaseThreshold: Schema.number().default(15).min(1).description('窗口内 decrease 次数达到该值时触发临时拉黑'),
     durationHours: Schema.number().default(12).min(1).description('临时拉黑持续的小时数'),
     penalty: Schema.number().default(5).min(0).description('触发临时拉黑时额外扣减的长期好感度'),
-    replyTemplate: Schema.string().default('').description('临时拉黑触发时的回复模板，可用变量：{{nickname}} {{@user}} {{duration}} {{penalty}}。留空则不回复')
+    replyTemplate: Schema.string().default('').description('临时拉黑触发时的回复模板，可用变量：{{nickname}} {{@user}} {{duration}} {{penalty}}。留空则不回复'),
+    renderAsImage: Schema.boolean().default(false).description('将临时黑名单渲染为图片')
   })
     .description('临时拉黑设置')
     .collapse(),
@@ -337,6 +338,11 @@ const OneBotToolsSchema = Schema.object({
   }).description('网盘搜索工具').collapse()
 }).description('其他工具')
 
+const OtherCommandsSchema = Schema.object({
+  groupListRenderAsImage: Schema.boolean().default(false).description('将群聊列表渲染为图片（affinity.groupList）'),
+  inspectRenderAsImage: Schema.boolean().default(false).description('将好感度详情渲染为图片（affinity.inspect）')
+}).description('其他指令')
+
 export const Config = Schema.intersect([
   AffinitySchema,
   BlacklistSchema,
@@ -344,5 +350,6 @@ export const Config = Schema.intersect([
   ScheduleSchema,
   OtherVariablesSchema,
   OneBotToolsSchema,
+  OtherCommandsSchema,
   OtherSettingsSchema
 ])

@@ -69,6 +69,7 @@ export declare const Config: Schema<{
         durationHours?: number | null | undefined;
         penalty?: number | null | undefined;
         replyTemplate?: string | null | undefined;
+        renderAsImage?: boolean | null | undefined;
     } & import("koishi").Dict) | null | undefined;
     autoBlacklist?: ({
         userId?: string | null | undefined;
@@ -157,6 +158,9 @@ export declare const Config: Schema<{
         panSouDefaultCloudTypes?: ("baidu" | "aliyun" | "quark" | "tianyi" | "uc" | "mobile" | "115" | "pikpak" | "xunlei" | "123" | "magnet" | "ed2k")[] | null | undefined;
         panSouMaxResults?: number | null | undefined;
     } & import("koishi").Dict) | null | undefined;
+} & {
+    groupListRenderAsImage?: boolean | null | undefined;
+    inspectRenderAsImage?: boolean | null | undefined;
 }, {
     affinityVariableName: string;
     contextAffinityOverview: Schemastery.ObjectT<{
@@ -236,6 +240,7 @@ export declare const Config: Schema<{
         durationHours: Schema<number, number>;
         penalty: Schema<number, number>;
         replyTemplate: Schema<string, string>;
+        renderAsImage: Schema<boolean, boolean>;
     }>;
     autoBlacklist: Schemastery.ObjectT<{
         userId: Schema<string, string>;
@@ -324,5 +329,8 @@ export declare const Config: Schema<{
         panSouDefaultCloudTypes: Schema<("baidu" | "aliyun" | "quark" | "tianyi" | "uc" | "mobile" | "115" | "pikpak" | "xunlei" | "123" | "magnet" | "ed2k")[], ("baidu" | "aliyun" | "quark" | "tianyi" | "uc" | "mobile" | "115" | "pikpak" | "xunlei" | "123" | "magnet" | "ed2k")[]>;
         panSouMaxResults: Schema<number, number>;
     }>;
+} & {
+    groupListRenderAsImage: boolean;
+    inspectRenderAsImage: boolean;
 }>;
 export {};

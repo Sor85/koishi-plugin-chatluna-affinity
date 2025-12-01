@@ -19,6 +19,11 @@ import { stripAtPrefix, formatTimestamp } from './utils/common'
 import { resolveRoleLabel } from './utils/role-mapper'
 import { renderMemberInfo, resolveUserInfo as resolveUserInfoHelper, resolveBotInfo as resolveBotInfoHelper, normalizeGroupList } from './renders/member-info'
 import { createRenderTableImage } from './renders/table'
+import { createRenderRankList } from './renders/rank-list'
+import { createRenderInspect } from './renders/inspect'
+import { createRenderGroupList } from './renders/group-list'
+import { createRenderBlacklist } from './renders/blacklist'
+import { createRenderSchedule } from './renders/schedule'
 import type { Config as ConfigType, MemberInfo, InMemoryTemporaryEntry, LogFn } from './types'
 
 export { Config, inject, name }
@@ -63,6 +68,11 @@ export function apply(ctx: Context, config: ConfigType): void {
   const history = createHistoryManager(ctx, config, log)
   const messageStore = createMessageStore(ctx, log, 100)
   const renderTableImage = createRenderTableImage(ctx)
+  const renderRankList = createRenderRankList(ctx)
+  const renderInspect = createRenderInspect(ctx)
+  const renderGroupList = createRenderGroupList(ctx)
+  const renderBlacklist = createRenderBlacklist(ctx)
+  const renderSchedule = createRenderSchedule(ctx)
 
   const shortTermOptions = (() => {
     const cfg = config.shortTermBlacklist || {}
@@ -126,7 +136,13 @@ export function apply(ctx: Context, config: ConfigType): void {
   const affinityProvider = createAffinityProvider({ config, cache, store })
   const relationshipProvider = createRelationshipProvider({ store })
   const contextAffinityProvider = createContextAffinityProvider({ config, store, history })
-  const scheduleManager = createScheduleManager(ctx, config, { getModel: getModel as () => { invoke?: (prompt: string) => Promise<{ content?: unknown }> } | null, getMessageContent: getMessageContent as (content: unknown) => string, resolvePersonaPreset, renderTableImage, log })
+  const scheduleManager = createScheduleManager(ctx, config, {
+    getModel: getModel as () => { invoke?: (prompt: string) => Promise<{ content?: unknown }> } | null,
+    getMessageContent: getMessageContent as (content: unknown) => string,
+    resolvePersonaPreset,
+    renderSchedule,
+    log
+  })
   scheduleManager.registerCommand()
 
   const DEFAULT_MEMBER_INFO_ITEMS = Array.isArray(defaultMemberInfoItems) && defaultMemberInfoItems.length ? defaultMemberInfoItems : ['nickname', 'userId', 'role', 'level', 'title', 'gender', 'age', 'area', 'joinTime', 'lastSentTime']
@@ -552,13 +568,33 @@ export function apply(ctx: Context, config: ConfigType): void {
             name = resolved.nickname
           }
         }
-        return { name, relation: row.relation || '——', affinity: row.affinity }
+        return { name, relation: row.relation || '——', affinity: row.affinity, userId: row.userId }
       }))
       const textLines = ['群昵称 关系 好感度', ...lines.map((item, index) => `${index + 1}. ${item.name} ${item.relation} ${item.affinity}`)]
 
       if (shouldRenderImage) {
-        const tableRows = lines.map((item, index) => [`${index + 1}`, item.name, item.relation, String(item.affinity)])
-        const buffer = await renderTableImage('好感度排行', ['排名', '群昵称', '关系', '好感度'], tableRows)
+        const rankItems = lines.map((item, index) => {
+          const rawId = stripAtPrefix(item.userId)
+          // Simple heuristic: if it looks like a number, assume it's a QQ or similar ID that works with qlogo
+          // Or if it has a platform prefix, try to extract the numeric part if it is QQ.
+          // Since the user asked for QQ avatar, we will try to extract the number.
+          // Many adapters use `platform:id`.
+          const idParts = rawId.split(':')
+          const id = idParts.length > 1 ? idParts[1] : idParts[0]
+          const numericId = id.match(/^\d+$/) ? id : undefined
+          
+          const avatarUrl = numericId ? `https://q1.qlogo.cn/g?b=qq&nk=${numericId}&s=640` : undefined
+          
+          return {
+            rank: index + 1,
+            name: item.name,
+            relation: item.relation,
+            affinity: item.affinity,
+            avatarUrl
+          }
+        })
+        
+        const buffer = await renderRankList('好感度排行', rankItems)
         if (buffer) return h.image(buffer, 'image/png')
         ctx.logger?.('chatluna-affinity')?.warn?.('排行榜图片渲染失败或服务缺失，已改为文本输出')
         return textLines.join('\n')
@@ -566,9 +602,9 @@ export function apply(ctx: Context, config: ConfigType): void {
       return textLines.join('\n')
     })
 
-  ctx.command('affinity.inspect [targetUserId:string] [platform:string]', '查看指定用户的好感度详情', { authority: 1 })
+  ctx.command('affinity.inspect [targetUserId:string] [platform:string] [image]', '查看指定用户的好感度详情', { authority: 1 })
     .alias('好感度详情')
-    .action(async ({ session }, targetUserArg, platformArg) => {
+    .action(async ({ session }, targetUserArg, platformArg, imageArg) => {
       const platform = platformArg || session?.platform || ''
       const userId = targetUserArg || session?.userId || ''
       if (!platform || !userId) return '请提供平台和用户 ID。'
@@ -577,7 +613,10 @@ export function apply(ctx: Context, config: ConfigType): void {
       const state = store.extractState(record)
       const coefficient = state.coefficientState?.coefficient ?? config.affinityDynamics?.coefficient?.base ?? 1.0
       const currentCompositeAffinity = Math.round(coefficient * state.longTermAffinity)
-      const shortTermCfg = config.affinityDynamics?.shortTerm || {}
+      
+      const shouldRenderImage = imageArg === undefined ? !!config.inspectRenderAsImage : !['0', 'false', 'text', 'no', 'n'].includes(String(imageArg).toLowerCase())
+      const puppeteer = (ctx as unknown as { puppeteer?: { page?: Function } }).puppeteer
+      
       const lines = [
         `用户：${record.nickname || userId} (${platform}/${userId})`,
         `关系：${record.relation || '——'}`,
@@ -588,6 +627,32 @@ export function apply(ctx: Context, config: ConfigType): void {
         `交互统计：总计 ${state.chatCount} 次`,
         `最后互动：${formatTimestamp(state.lastInteractionAt)}`
       ]
+      
+      if (shouldRenderImage && puppeteer?.page) {
+        const rawId = stripAtPrefix(userId)
+        const idParts = rawId.split(':')
+        const id = idParts.length > 1 ? idParts[1] : idParts[0]
+        const numericId = id.match(/^\d+$/) ? id : undefined
+        const avatarUrl = numericId ? `https://q1.qlogo.cn/g?b=qq&nk=${numericId}&s=640` : undefined
+        
+        const buffer = await renderInspect({
+          userId: stripAtPrefix(userId),
+          nickname: record.nickname || userId,
+          platform,
+          relation: record.relation || '——',
+          compositeAffinity: currentCompositeAffinity,
+          longTermAffinity: state.longTermAffinity,
+          shortTermAffinity: state.shortTermAffinity,
+          coefficient,
+          streak: state.coefficientState?.streak ?? 0,
+          chatCount: state.chatCount,
+          lastInteraction: formatTimestamp(state.lastInteractionAt),
+          avatarUrl
+        })
+        if (buffer) return h.image(buffer, 'image/png')
+        ctx.logger?.('chatluna-affinity')?.warn?.('好感度详情图片渲染失败，已改为文本输出')
+      }
+      
       return lines.join('\n')
     })
 
@@ -615,14 +680,19 @@ export function apply(ctx: Context, config: ConfigType): void {
       })]
 
       if (shouldRenderImage) {
-        const tableRows = enriched.map((item, index) => [
-          `${index + 1}`,
-          stripAtPrefix(item.nickname || item.userId),
-          stripAtPrefix(item.userId),
-          item.blockedAt || '——',
-          item.note || '——'
-        ])
-        const buffer = await renderTableImage('自动拉黑名单', ['序号', '昵称', '用户ID', '拉黑时间', '备注'], tableRows)
+        const items = enriched.map((item, index) => ({
+          index: index + 1,
+          nickname: stripAtPrefix(item.nickname || item.userId),
+          userId: stripAtPrefix(item.userId),
+          timeInfo: item.blockedAt || '——',
+          note: item.note || '——',
+          avatarUrl: (() => {
+             const rawId = stripAtPrefix(item.userId)
+             const numericId = rawId.match(/^\d+$/) ? rawId : undefined
+             return numericId ? `https://q1.qlogo.cn/g?b=qq&nk=${numericId}&s=640` : undefined
+          })()
+        }))
+        const buffer = await renderBlacklist('自动黑名单', items)
         if (buffer) return h.image(buffer, 'image/png')
         ctx.logger?.('chatluna-affinity')?.warn?.('黑名单图片渲染失败或服务缺失，已改为文本输出')
         return textLines.join('\n')
@@ -718,11 +788,14 @@ export function apply(ctx: Context, config: ConfigType): void {
       return `${platform}/${normalizedUserId} 不在临时黑名单中。`
     })
 
-  ctx.command('affinity.tempBlacklist [limit:number] [platform:string]', '查看临时黑名单列表', { authority: 2 })
+  ctx.command('affinity.tempBlacklist [limit:number] [platform:string] [image]', '查看临时黑名单列表', { authority: 2 })
     .alias('临时黑名单')
-    .action(async ({ session }, limitArg, platformArg) => {
+    .action(async ({ session }, limitArg, platformArg, imageArg) => {
       const parsedLimit = Number(limitArg)
       const limit = Math.max(1, Math.min(Number.isFinite(parsedLimit) ? parsedLimit : config.blacklistDefaultLimit, 100))
+      const shouldRenderImage = imageArg === undefined ? !!config.shortTermBlacklist?.renderAsImage : !['0', 'false', 'text', 'no', 'n'].includes(String(imageArg).toLowerCase())
+      const puppeteer = (ctx as unknown as { puppeteer?: { page?: Function } }).puppeteer
+      if (shouldRenderImage && (!puppeteer?.page)) return '当前环境未启用 puppeteer，已改为文本模式。'
 
       const records = store.listTemporaryBlacklist(platformArg || session?.platform)
       if (!records.length) return '当前暂无临时拉黑记录。'
@@ -736,21 +809,70 @@ export function apply(ctx: Context, config: ConfigType): void {
         return `${index + 1}. ${nickname} ${userIdDisplay} ${expiresAt} ${item.durationHours}h ${item.penalty} ${note}`
       })]
 
+      if (shouldRenderImage) {
+        const items = limited.map((item, index) => ({
+          index: index + 1,
+          nickname: stripAtPrefix(item.nickname || item.userId),
+          userId: stripAtPrefix(item.userId),
+          timeInfo: `${item.durationHours} (到期: ${item.expiresAt || '——'})`,
+          note: item.note || '——',
+          isTemp: true,
+          penalty: Number(item.penalty),
+          avatarUrl: (() => {
+             const rawId = stripAtPrefix(item.userId)
+             const numericId = rawId.match(/^\d+$/) ? rawId : undefined
+             return numericId ? `https://q1.qlogo.cn/g?b=qq&nk=${numericId}&s=640` : undefined
+          })()
+        }))
+        const buffer = await renderBlacklist('临时黑名单', items)
+        if (buffer) return h.image(buffer, 'image/png')
+        ctx.logger?.('chatluna-affinity')?.warn?.('临时黑名单图片渲染失败，已改为文本输出')
+      }
+
       return textLines.join('\n')
     })
 
-  ctx.command('affinity.groupList', '\u663e\u793a\u673a\u5668\u4eba\u5df2\u52a0\u5165\u7684\u7fa4\u804a', { authority: 2 })
-    .alias('\u7fa4\u804a\u5217\u8868')
-    .action(async ({ session }) => {
-      if (!session) return '\u65e0\u6cd5\u83b7\u53d6\u4f1a\u8bdd\u4fe1\u606f\u3002'
-      if (session.platform !== 'onebot') return '\u8be5\u6307\u4ee4\u4ec5\u652f\u6301 OneBot/NapCat \u5e73\u53f0\u3002'
+  ctx.command('affinity.groupList [image]', '显示机器人已加入的群聊', { authority: 2 })
+    .alias('群聊列表')
+    .action(async ({ session }, imageArg) => {
+      if (!session) return '无法获取会话信息。'
+      if (session.platform !== 'onebot') return '该指令仅支持 OneBot/NapCat 平台。'
       const list = await fetchGroupList(session)
-      if (!list || !list.length) return '\u6682\u65e0\u7fa4\u804a\u6570\u636e\u3002'
+      if (!list || !list.length) return '暂无群聊数据。'
+      
+      const shouldRenderImage = imageArg === undefined ? !!config.groupListRenderAsImage : !['0', 'false', 'text', 'no', 'n'].includes(String(imageArg).toLowerCase())
+      const puppeteer = (ctx as unknown as { puppeteer?: { page?: Function } }).puppeteer
+      
       const groupInfoCfg = config.groupInfo || config.otherVariables?.groupInfo || {}
-      return normalizeGroupList(list, {
+      const textResult = normalizeGroupList(list, {
         includeMemberCount: groupInfoCfg.includeMemberCount !== false,
         includeCreateTime: groupInfoCfg.includeCreateTime !== false
       })
+      
+      if (shouldRenderImage && puppeteer?.page) {
+        const groups = list.map((group) => {
+          const groupId = String(group.group_id ?? group.groupId ?? group.id ?? '')
+          const groupName = String(group.group_name ?? group.groupName ?? group.name ?? groupId)
+          const memberCount = group.member_count ?? group.memberCount
+          let createTime: string | undefined
+          const rawCreateTime = (group as { create_time?: number | string; createTime?: number | string }).create_time
+            ?? (group as { create_time?: number | string; createTime?: number | string }).createTime
+          if (groupInfoCfg.includeCreateTime !== false && rawCreateTime) {
+            const ts = Number(rawCreateTime)
+            if (Number.isFinite(ts)) {
+              const date = new Date(ts < 1e11 ? ts * 1000 : ts)
+              createTime = date.toLocaleDateString('zh-CN')
+            }
+          }
+          return { groupId, groupName, memberCount, createTime }
+        })
+        
+        const buffer = await renderGroupList('群聊列表', groups)
+        if (buffer) return h.image(buffer, 'image/png')
+        ctx.logger?.('chatluna-affinity')?.warn?.('群聊列表图片渲染失败，已改为文本输出')
+      }
+      
+      return textResult
     })
 
   // 清空数据库指令（需要二次确认）

@@ -14,7 +14,7 @@ interface ScheduleManagerDeps {
   getModel: () => unknown
   getMessageContent: (content: unknown) => string
   resolvePersonaPreset: (session?: Session) => string
-  renderTableImage: (title: string, headers: string[], rows: string[][], options?: RenderOptions) => Promise<Buffer | null>
+  renderSchedule: (data: { title: string; description: string; entries: ScheduleEntry[]; date: string }) => Promise<Buffer | null>
   log: LogFn
 }
 
@@ -72,7 +72,7 @@ function getCurrentMinutes(timezone: string): number {
 const globalScheduleCache = new Map<string, { schedule: Schedule; date: string }>()
 
 export function createScheduleManager(ctx: Context, config: Config, deps: ScheduleManagerDeps): ScheduleManager {
-  const { getModel, getMessageContent, resolvePersonaPreset, renderTableImage, log } = deps
+  const { getModel, getMessageContent, resolvePersonaPreset, renderSchedule, log } = deps
   const scheduleConfig = config.schedule || {}
   const enabled = scheduleConfig.enabled !== false
   const timezone = scheduleConfig.timezone || 'Asia/Shanghai'
@@ -327,13 +327,12 @@ export function createScheduleManager(ctx: Context, config: Config, deps: Schedu
   const renderImage = async (schedule: Schedule): Promise<Buffer | null> => {
     if (!schedule || !schedule.entries.length) return null
 
-    const headers = ['时间', '安排']
-    const rows = schedule.entries.map(e => [`${e.start}-${e.end}`, e.summary])
-
     try {
-      return await renderTableImage(scheduleConfig.title || '今日日程', headers, rows, {
-        heading: schedule.title || '今日日程',
-        subHeading: schedule.description || ''
+      return await renderSchedule({
+        title: schedule.title || scheduleConfig.title || '今日日程',
+        description: schedule.description || '',
+        entries: schedule.entries,
+        date: schedule.date
       })
     } catch (error) {
       log('warn', '日程图片渲染失败', error)
