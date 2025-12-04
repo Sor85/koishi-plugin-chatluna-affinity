@@ -6,6 +6,7 @@ interface ProviderConfigurable {
   session?: {
     platform?: string
     userId?: string
+    selfId?: string
   }
 }
 
@@ -20,10 +21,10 @@ interface ContextHistory {
 }
 
 export function createAffinityProvider({ config, cache, store }: ProviderDeps) {
-  return async (_args: unknown, _variables: unknown, configurable?: ProviderConfigurable): Promise<number> => {
+  return async (_args: unknown, _variables: unknown, configurable?: ProviderConfigurable): Promise<number | string> => {
     const session = configurable?.session
-    if (!session?.platform || !session?.userId) {
-      return store.defaultInitial()
+    if (!session?.platform || !session?.userId || !session?.selfId) {
+      return ''
     }
 
     // 先尝试从缓存获取（缓存中存储的是计算后的综合好感度）
@@ -32,28 +33,17 @@ export function createAffinityProvider({ config, cache, store }: ProviderDeps) {
 
     // 检查是否有手动配置的特殊关系（可能突破上限）
     const manual = store.findManualRelationship(session.platform, session.userId)
-    const hasManualOverride = manual && typeof manual.initialAffinity === 'number'
+    const hasManualOverride = !!manual?.relation
 
     // 从数据库加载记录（不自动创建）
-    const record = await store.load(session.platform, session.userId)
+    const record = await store.load(session.selfId, session.userId)
 
-    // 如果没有记录，返回默认初始值或手动配置的值
+    // 如果没有记录，返回空（首次对话时好感度未初始化）
     if (!record) {
-      const fallback = hasManualOverride ? manual.initialAffinity! : store.defaultInitial()
-      cache.set(session.platform, session.userId, fallback)
-      return fallback
+      return ''
     }
 
-    // 如果有保存的综合好感度覆盖值，直接使用
-    const affinityOverride = (record as unknown as { affinityOverride?: number }).affinityOverride
-    if (typeof affinityOverride === 'number') {
-      // 特殊关系不受 clamp 限制
-      const result = hasManualOverride ? affinityOverride : store.clamp(affinityOverride)
-      cache.set(session.platform, session.userId, result)
-      return result
-    }
-
-    // 否则根据长期好感度和系数计算综合好感度
+    // 根据长期好感度和系数计算综合好感度
     const longTermAffinity = record.longTermAffinity ?? record.affinity ?? 0
     let coefficient = config.affinityDynamics?.coefficient?.base ?? 1.0
     if (record.coefficientState) {
@@ -79,19 +69,33 @@ export function createRelationshipProvider({ store }: Pick<ProviderDeps, 'store'
     const platform = String(platformArg || session?.platform || '').trim()
     if (!userId) return ''
 
+    // 检查手动配置的特殊关系（最高优先级）
     const manual = store.findManualRelationship(platform, userId)
+    
+    // 需要 selfId 来查询数据库
+    const selfId = session?.selfId
+    if (!selfId) return ''
+    
+    // 从数据库加载记录
+    const record = await store.load(selfId, userId)
+    
+    // 首次对话未初始化时返回空（好感度和关系都不显示）
+    if (!record) return ''
+    
+    // 特殊关系配置优先
     if (manual?.relation) return manual.note ? `${manual.relation}（${manual.note}）` : manual.relation
-
-    const record = await store.load(platform, userId)
-    const affinity = record?.affinity
+    
+    // 其次使用数据库中存储的关系
+    if (record.relation) return record.relation
+    
+    // 最后根据好感度等级推断关系
+    const affinity = record.affinity
     if (typeof affinity === 'number') {
       const level = store.resolveLevelByAffinity(affinity)
       if (!level) return ''
       return level.note ? `${level.relation}（${level.note}）` : level.relation
     }
-    const fallback = store.defaultInitial()
-    const level = store.resolveLevelByAffinity(fallback)
-    return level ? level.relation : ''
+    return ''
   }
 }
 
@@ -122,16 +126,18 @@ export function createContextAffinityProvider({ config, store, history }: { conf
     if (!orderedUsers.length) return ''
 
     const results = await Promise.all(orderedUsers.map(async ({ userId, username }) => {
-      const record = await store.load(session.platform, userId)
+      const record = await store.load(session.selfId, userId)
       const manual = store.findManualRelationship(session.platform, userId)
-      const affinity = typeof record?.affinity === 'number' ? record.affinity : store.defaultInitial()
+      // 首次对话时未初始化，跳过该用户
+      if (!record) return null
+      const affinity = record.affinity
       const clamped = store.clamp(affinity)
       const level = store.resolveLevelByAffinity(clamped)
-      const relation = manual?.relation || level?.relation || '未知'
+      const relation = manual?.relation || record?.relation || level?.relation || '未知'
       const name = username || record?.nickname || userId
       return `id:${userId} name:${name} affinity:${clamped} relationship:${relation}`
     }))
 
-    return results.join('\n')
+    return results.filter(Boolean).join('\n')
   }
 }

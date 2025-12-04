@@ -336,7 +336,7 @@ const toVariable = (variable: VariableItem) => {
     // 定义变量所在的区域和搜索键
     const varConfig: Record<string, { section: string; searchKey: string | string[] }> = {
         affinity: { section: '好感度设置', searchKey: 'affinityVariableName' },
-        contextAffinity: { section: '好感度设置', searchKey: ['contextAffinityOverview', '上下文好感度设置'] },
+        contextAffinity: { section: '好感度设置', searchKey: ['contextAffinityOverview', '上下文好感度变量'] },
         relationship: { section: '关系设置', searchKey: 'relationshipVariableName' },
         schedule: { section: '日程设置', searchKey: 'variableName' },
         currentSchedule: { section: '日程设置', searchKey: 'currentVariableName' },

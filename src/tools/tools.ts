@@ -40,7 +40,7 @@ function createAffinityTool(options: ToolOptions) {
       if (!platform || !userId) return 'Missing platform or user ID. Unable to adjust affinity.'
       const value = options.clamp(input.affinity)
       const level = options.resolveLevelByAffinity(value)
-      await options.save({ platform, userId, selfId: session?.selfId, session }, value, true, level?.relation ?? options.defaultRelation)
+      await options.save({ platform, userId, selfId: session?.selfId, session }, value, level?.relation ?? options.defaultRelation)
       options.cache.set(platform, userId, value)
       if (level?.relation) {
         return `Affinity for ${platform}/${userId} set to ${value}. Relationship updated to ${level.relation}.`
@@ -70,19 +70,10 @@ function createRelationshipTool(options: ToolOptions) {
       const userId = input.targetUserId || session?.userId
       if (!platform || !userId) return 'Missing platform or user ID. Unable to adjust relationship.'
       const relationName = input.relation.trim()
-      let level = options.resolveLevelByRelation(relationName)
-      if (!level && Array.isArray(options.relationLevels)) {
-        level = options.relationLevels.find((item) => item && item.relation === relationName) || null
-      }
-      const baseValue = level ? level.min : options.defaultInitial()
-      const base = options.clamp(baseValue)
-      await options.save({ platform, userId, selfId: session?.selfId, session }, base, true, relationName)
-      options.cache.set(platform, userId, base)
-      options.updateRelationshipConfig(userId, relationName, base)
-      if (level) {
-        return `Relationship for ${platform}/${userId} set to ${relationName}. Affinity updated to ${base}.`
-      }
-      return `Relationship for ${platform}/${userId} set to ${relationName} (custom). Affinity updated to ${base}.`
+      // 保存时不修改好感度（传入 NaN），不传入 session 以避免覆盖其他用户的 nickname
+      const isTargetUser = userId === session?.userId
+      await options.save({ platform, userId, selfId: session?.selfId, session: isTargetUser ? session : undefined }, NaN, relationName)
+      return `Relationship for ${platform}/${userId} set to ${relationName}.`
     }
   })()
 }
@@ -107,11 +98,14 @@ function createBlacklistTool(options: ToolOptions) {
       const channelId = (session as unknown as { guildId?: string })?.guildId || session?.channelId || (session as unknown as { roomId?: string })?.roomId || ''
       if (!platform || !userId) return 'Missing platform or user ID. Unable to adjust blacklist.'
 
+      const selfId = session?.selfId
+      if (!selfId) return 'Missing selfId. Unable to adjust blacklist.'
+
       // 临时拉黑
       if (input.action === 'temp_add') {
         let nickname = ''
         try {
-          const existing = await options.store.load(platform, userId)
+          const existing = await options.store.load(selfId, userId)
           nickname = existing?.nickname || ''
         } catch { /* ignore */ }
         const durationHours = input.durationHours ?? options.shortTermConfig?.durationHours ?? 12
@@ -121,10 +115,10 @@ function createBlacklistTool(options: ToolOptions) {
         // 扣除好感度
         if (penalty > 0) {
           try {
-            const record = await options.store.load(platform, userId)
+            const record = await options.store.load(selfId, userId)
             if (record) {
               const newAffinity = options.clamp((record.longTermAffinity ?? record.affinity) - penalty)
-              await options.save({ platform, userId, selfId: session?.selfId, session }, newAffinity, true, record.relation || '')
+              await options.save({ platform, userId, selfId, session }, newAffinity, record.relation || '')
             }
           } catch { /* ignore */ }
         }
@@ -144,7 +138,7 @@ function createBlacklistTool(options: ToolOptions) {
       if (input.action === 'add') {
         let nickname = ''
         try {
-          const existing = await options.store.load(platform, userId)
+          const existing = await options.store.load(selfId, userId)
           nickname = existing?.nickname || ''
         } catch { /* ignore */ }
         options.store.recordBlacklist(platform, userId, { note: input.note ?? 'tool', nickname, channelId })

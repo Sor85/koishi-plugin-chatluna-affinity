@@ -66,6 +66,11 @@ export function apply(ctx: Context, config: ConfigType): void {
   const cache = createAffinityCache()
   const store = createAffinityStore(ctx, config, log)
   const history = createHistoryManager(ctx, config, log)
+
+  // 监听配置变化，当特殊关系配置列表变化时同步到数据库
+  ctx.accept(['relationships'], () => {
+    store.syncRelationshipsToDatabase().catch((error) => log('warn', '同步特殊关系配置到数据库失败', error))
+  }, { passive: true })
   const messageStore = createMessageStore(ctx, log, 100)
   const renderTableImage = createRenderTableImage(ctx)
   const renderRankList = createRenderRankList(ctx)
@@ -373,6 +378,9 @@ export function apply(ctx: Context, config: ConfigType): void {
   ctx.middleware(globalGuard as Parameters<typeof ctx.middleware>[0], true)
 
   ctx.on('ready', async () => {
+    // 同步特殊关系配置列表到数据库，确保配置优先于数据库
+    try { await store.syncRelationshipsToDatabase() } catch (error) { log('warn', '同步特殊关系配置到数据库失败', error) }
+
     const chatlunaService = (ctx as unknown as { chatluna?: { createChatModel?: Function; config?: { defaultModel?: string }; promptRenderer?: { registerFunctionProvider?: Function } } }).chatluna
     try { modelRef = await chatlunaService?.createChatModel?.(config.model || chatlunaService?.config?.defaultModel) } catch (error) { log('warn', '模型初始化失败', error) }
 
@@ -607,9 +615,12 @@ export function apply(ctx: Context, config: ConfigType): void {
     .action(async ({ session }, targetUserArg, platformArg, imageArg) => {
       const platform = platformArg || session?.platform || ''
       const userId = targetUserArg || session?.userId || ''
-      if (!platform || !userId) return '请提供平台和用户 ID。'
-      const record = await store.load(platform, userId)
+      const selfId = session?.selfId || ''
+      if (!selfId || !userId) return '请提供 selfId 和用户 ID。'
+      
+      const record = await store.load(selfId, userId)
       if (!record) return '未找到好感度记录。'
+      
       const state = store.extractState(record)
       const coefficient = state.coefficientState?.coefficient ?? config.affinityDynamics?.coefficient?.base ?? 1.0
       const currentCompositeAffinity = Math.round(coefficient * state.longTermAffinity)
@@ -617,8 +628,21 @@ export function apply(ctx: Context, config: ConfigType): void {
       const shouldRenderImage = imageArg === undefined ? !!config.inspectRenderAsImage : !['0', 'false', 'text', 'no', 'n'].includes(String(imageArg).toLowerCase())
       const puppeteer = (ctx as unknown as { puppeteer?: { page?: Function } }).puppeteer
       
+      // 获取群昵称（群名片），优先使用 card，其次 nickname
+      let displayNickname = record.nickname || userId
+      if (session) {
+        const memberInfo = await fetchMember(session as Session, userId)
+        if (memberInfo) {
+          const raw = memberInfo as unknown as Record<string, unknown>
+          const card = raw.card || (raw.user as Record<string, unknown>)?.card
+          const nick = raw.nickname || raw.nick || (raw.user as Record<string, unknown>)?.nickname || (raw.user as Record<string, unknown>)?.nick
+          const resolved = String(card || nick || '').trim()
+          if (resolved) displayNickname = resolved
+        }
+      }
+      
       const lines = [
-        `用户：${record.nickname || userId} (${platform}/${userId})`,
+        `用户：${displayNickname} ${stripAtPrefix(userId)}`,
         `关系：${record.relation || '——'}`,
         `综合好感度：${currentCompositeAffinity}`,
         `长期好感度：${state.longTermAffinity}`,
@@ -634,11 +658,12 @@ export function apply(ctx: Context, config: ConfigType): void {
         const id = idParts.length > 1 ? idParts[1] : idParts[0]
         const numericId = id.match(/^\d+$/) ? id : undefined
         const avatarUrl = numericId ? `https://q1.qlogo.cn/g?b=qq&nk=${numericId}&s=640` : undefined
-        
+        const displayPlatform = platform === 'onebot' ? '' : platform
+
         const buffer = await renderInspect({
           userId: stripAtPrefix(userId),
-          nickname: record.nickname || userId,
-          platform,
+          nickname: displayNickname,
+          platform: displayPlatform,
           relation: record.relation || '——',
           compositeAffinity: currentCompositeAffinity,
           longTermAffinity: state.longTermAffinity,
@@ -760,12 +785,13 @@ export function apply(ctx: Context, config: ConfigType): void {
       if (!entry) return `添加临时黑名单失败。`
 
       // 扣除好感度
-      if (penalty > 0) {
+      const selfId = session?.selfId
+      if (penalty > 0 && selfId) {
         try {
-          const record = await store.load(platform, normalizedUserId)
+          const record = await store.load(selfId, normalizedUserId)
           if (record) {
             const newAffinity = store.clamp((record.longTermAffinity ?? record.affinity) - penalty)
-            await store.save({ platform, userId: normalizedUserId, selfId: session?.selfId, session }, newAffinity, true, record.relation || '')
+            await store.save({ platform, userId: normalizedUserId, selfId, session }, newAffinity, record.relation || '')
           }
         } catch { /* ignore */ }
       }

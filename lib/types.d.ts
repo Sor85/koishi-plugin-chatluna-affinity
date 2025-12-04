@@ -1,24 +1,16 @@
 import type { Session } from 'koishi';
 export interface AffinityRecord {
-    id: string;
-    platform: string;
-    selfId: string | null;
+    selfId: string;
     userId: string;
     nickname: string | null;
     affinity: number;
-    affinityInited: boolean;
     relation: string | null;
     shortTermAffinity: number | null;
     longTermAffinity: number | null;
-    shortTermUpdatedAt: Date | null;
-    longTermUpdatedAt: Date | null;
-    updatedAt: Date | null;
-    relationUpdatedAt: Date | null;
     chatCount: number | null;
     actionStats: string | null;
     lastInteractionAt: Date | null;
     coefficientState: string | null;
-    affinityOverride?: number;
 }
 export interface ActionEntry {
     action: ActionType;
@@ -101,7 +93,6 @@ export interface RelationshipLevel {
     note?: string;
 }
 export interface ManualRelationship {
-    initialAffinity: number | null;
     userId: string;
     relation: string;
     note?: string;
@@ -238,9 +229,6 @@ export interface AffinityState {
     affinity: number;
     longTermAffinity: number;
     shortTermAffinity: number;
-    updatedAt: Date;
-    shortTermUpdatedAt: Date;
-    longTermUpdatedAt: Date;
     chatCount: number;
     actionStats: ActionStats;
     lastInteractionAt: Date | null;
@@ -257,13 +245,15 @@ export interface SessionSeed {
 }
 export interface AffinityStore {
     clamp: (value: number) => number;
-    save: (seed: SessionSeed, value: number, inited?: boolean, relation?: string, extra?: Partial<SaveExtra>) => Promise<AffinityRecord | null>;
-    load: (platform: string, userId: string) => Promise<AffinityRecord | null>;
+    save: (seed: SessionSeed, value: number, relation?: string, extra?: Partial<SaveExtra>) => Promise<AffinityRecord | null>;
+    load: (selfId: string, userId: string) => Promise<AffinityRecord | null>;
     ensure: (session: Session, clampFn: ClampFn, fallbackInitial?: number) => Promise<AffinityState>;
     resolveLevelByAffinity: (value: number) => RelationshipLevel | null;
     resolveLevelByRelation: (relationName: string) => RelationshipLevel | null;
     findManualRelationship: (platform: string, userId: string) => ManualRelationship | null;
-    updateRelationshipConfig: (userId: string, relationName: string, affinityValue?: number) => void;
+    updateRelationshipConfig: (userId: string, relationName: string) => void;
+    removeRelationshipConfig: (selfId: string, userId: string) => Promise<boolean>;
+    syncRelationshipsToDatabase: (selfId?: string) => Promise<void>;
     recordBlacklist: (platform: string, userId: string, detail?: BlacklistDetail) => BlacklistEntry | null;
     removeBlacklist: (platform: string, userId: string, channelId?: string) => boolean;
     listBlacklist: (platform?: string, channelId?: string) => BlacklistEntry[];
@@ -282,13 +272,10 @@ export interface AffinityStore {
 export interface SaveExtra {
     longTermAffinity?: number;
     shortTermAffinity?: number;
-    shortTermUpdatedAt?: Date;
-    longTermUpdatedAt?: Date;
     chatCount?: number;
     actionStats?: ActionStats;
     coefficientState?: CoefficientState;
     lastInteractionAt?: Date;
-    affinityOverride?: number;
 }
 export interface BlacklistDetail {
     note?: string;

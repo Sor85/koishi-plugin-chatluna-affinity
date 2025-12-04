@@ -95,7 +95,6 @@ export declare const Config: Schema<{
 } & {
     relationshipVariableName?: string | null | undefined;
     relationships?: ({
-        initialAffinity?: number | null | undefined;
         userId?: string | null | undefined;
         relation?: string | null | undefined;
         note?: string | null | undefined;
@@ -266,7 +265,6 @@ export declare const Config: Schema<{
 } & {
     relationshipVariableName: string;
     relationships: Schemastery.ObjectT<{
-        initialAffinity: Schema<number, number>;
         userId: Schema<string, string>;
         relation: Schema<string, string>;
         note: Schema<string, string>;

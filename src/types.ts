@@ -1,25 +1,17 @@
 import type { Session } from 'koishi'
 
 export interface AffinityRecord {
-  id: string
-  platform: string
-  selfId: string | null
+  selfId: string
   userId: string
   nickname: string | null
   affinity: number
-  affinityInited: boolean
   relation: string | null
   shortTermAffinity: number | null
   longTermAffinity: number | null
-  shortTermUpdatedAt: Date | null
-  longTermUpdatedAt: Date | null
-  updatedAt: Date | null
-  relationUpdatedAt: Date | null
   chatCount: number | null
   actionStats: string | null
   lastInteractionAt: Date | null
   coefficientState: string | null
-  affinityOverride?: number
 }
 
 export interface ActionEntry { action: ActionType; timestamp: number }
@@ -74,7 +66,7 @@ export interface ActionWindowConfig {
 export interface CoefficientConfig { base: number; maxDrop: number; maxBoost: number; decayPerDay: number; boostPerDay: number }
 export interface AffinityDynamicsConfig { shortTerm?: Partial<ShortTermConfig>; actionWindow?: Partial<ActionWindowConfig>; coefficient?: Partial<CoefficientConfig> }
 export interface RelationshipLevel { min: number; max: number; relation: string; note?: string }
-export interface ManualRelationship { initialAffinity: number | null; userId: string; relation: string; note?: string }
+export interface ManualRelationship { userId: string; relation: string; note?: string }
 export interface BlacklistEntry { platform: string; userId: string; blockedAt: string; nickname?: string; note: string; channelId?: string }
 export interface TemporaryBlacklistEntry { platform: string; userId: string; blockedAt: string; expiresAt: string; nickname?: string; note: string; channelId?: string; durationHours: number | string; penalty: number | string }
 export interface ShortTermBlacklistConfig { enabled: boolean; windowHours?: number; decreaseThreshold?: number; durationHours?: number; penalty?: number; replyTemplate?: string; renderAsImage?: boolean }
@@ -154,9 +146,6 @@ export interface AffinityState {
   affinity: number
   longTermAffinity: number
   shortTermAffinity: number
-  updatedAt: Date
-  shortTermUpdatedAt: Date
-  longTermUpdatedAt: Date
   chatCount: number
   actionStats: ActionStats
   lastInteractionAt: Date | null
@@ -168,13 +157,15 @@ export interface SessionSeed { platform?: string; userId?: string; selfId?: stri
 
 export interface AffinityStore {
   clamp: (value: number) => number
-  save: (seed: SessionSeed, value: number, inited?: boolean, relation?: string, extra?: Partial<SaveExtra>) => Promise<AffinityRecord | null>
-  load: (platform: string, userId: string) => Promise<AffinityRecord | null>
+  save: (seed: SessionSeed, value: number, relation?: string, extra?: Partial<SaveExtra>) => Promise<AffinityRecord | null>
+  load: (selfId: string, userId: string) => Promise<AffinityRecord | null>
   ensure: (session: Session, clampFn: ClampFn, fallbackInitial?: number) => Promise<AffinityState>
   resolveLevelByAffinity: (value: number) => RelationshipLevel | null
   resolveLevelByRelation: (relationName: string) => RelationshipLevel | null
   findManualRelationship: (platform: string, userId: string) => ManualRelationship | null
-  updateRelationshipConfig: (userId: string, relationName: string, affinityValue?: number) => void
+  updateRelationshipConfig: (userId: string, relationName: string) => void
+  removeRelationshipConfig: (selfId: string, userId: string) => Promise<boolean>
+  syncRelationshipsToDatabase: (selfId?: string) => Promise<void>
   recordBlacklist: (platform: string, userId: string, detail?: BlacklistDetail) => BlacklistEntry | null
   removeBlacklist: (platform: string, userId: string, channelId?: string) => boolean
   listBlacklist: (platform?: string, channelId?: string) => BlacklistEntry[]
@@ -194,13 +185,10 @@ export interface AffinityStore {
 export interface SaveExtra {
   longTermAffinity?: number
   shortTermAffinity?: number
-  shortTermUpdatedAt?: Date
-  longTermUpdatedAt?: Date
   chatCount?: number
   actionStats?: ActionStats
   coefficientState?: CoefficientState
   lastInteractionAt?: Date
-  affinityOverride?: number
 }
 
 export interface BlacklistDetail { note?: string; nickname?: string; channelId?: string; guildId?: string; groupId?: string }

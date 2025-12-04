@@ -116,7 +116,7 @@ export function createRenderInspect(ctx: Context) {
         }
         <div class="user-info">
           <div class="nickname-lg">${data.nickname}</div>
-          <div class="sub-text" style="font-size: 14px;">${data.platform}/${data.userId}</div>
+          <div class="sub-text" style="font-size: 14px;">${data.platform ? `${data.platform}/` : ''}${data.userId}</div>
           ${data.relation && data.relation !== '——' ? `<span class="badge" style="margin-top: 8px; display: inline-block;">${data.relation}</span>` : ''}
         </div>
       </div>

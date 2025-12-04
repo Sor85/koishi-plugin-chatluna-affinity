@@ -78,7 +78,7 @@ const AffinitySchema = Schema.object({
     messageWindow: Schema.number().default(20).min(1).max(200).description('读取最近的群聊消息数量')
   })
     .default({ variableName: 'contextAffinity', messageWindow: 20 })
-    .description('上下文好感度设置')
+    .description('上下文好感度变量')
     .collapse(),
   baseAffinityConfig: Schema.object({
     initialRandomMin: Schema.number().default(baseAffinityDefaults.initialRandomMin).description('初始长期好感度随机范围下限'),
@@ -178,12 +178,11 @@ const RelationshipSchema = Schema.object({
   relationshipVariableName: Schema.string().default('relationship').description('关系变量名称'),
   relationships: Schema.array(
     Schema.object({
-      initialAffinity: Schema.number().default(null as unknown as number).description('初始长期好感'),
       userId: Schema.string().default('').description('用户 ID'),
       relation: Schema.string().default('').description('关系'),
       note: Schema.string().default('').description('备注')
     })
-  ).role('table').default([]).description('特殊关系配置列表'),
+  ).role('table').default([]).description('特殊关系配置（建议仅在第一次使用或清空好感数据库时配置，后续增改可能导致bug）'),
   relationshipAffinityLevels: Schema.array(
     Schema.object({
       min: Schema.number().default(0).description('综合好感度下限'),
@@ -282,7 +281,7 @@ const ScheduleSchema = Schema.object({
       )
       .description('日程生成提示词模板（可使用 {{date}}、{{weekday}}、{{persona}} 等占位符）'),
     renderAsImage: Schema.boolean().default(false).description('将今日日程渲染为图片'),
-    startDelay: Schema.number().default(10000).description('启动延迟（毫秒），等待其他插件加载完成'),
+    startDelay: Schema.number().default(3000).description('启动延迟（毫秒），等待 ChatLuna 加载完成'),
     registerTool: Schema.boolean().default(true).description('注册 ChatLuna 工具：获取今日日程'),
     toolName: Schema.string().default('daily_schedule').description('ChatLuna 工具名称：获取今日日程')
   })
@@ -293,7 +292,7 @@ const ScheduleSchema = Schema.object({
       timezone: 'Asia/Shanghai',
       prompt: '你是一名擅长写作日常作息的助理，需要基于角色人设生成今日全日计划。\n今天是 {{date}}（{{weekday}}）。\n人设：{{persona}}\n请输出 JSON，结构如下：\n{\n  "title": "📅 今日日程",\n  "description": "一段带有角色情绪的总述",\n  "entries": [\n    { "start": "00:00", "end": "07:00", "activity": "睡觉", "detail": "符合人设的描写" }\n  ]\n}\n要求：\n1. entries 至少 10 项，覆盖 00:00-24:00，时间格式 HH:MM，并保持时段衔接自然；\n2. 请结合当前日期安排日程：工作日突出学习/工作与效率，休息日强调放松与兴趣；如遇节假日尤其春节，请写出应有的仪式感与特殊活动；\n3. 活动名称与描述要符合人设语气；\n4. 整体日程安排须符合角色人设的生活方式与优先级；\n5. 仅输出 JSON，不要附加解释。',
       renderAsImage: false,
-      startDelay: 10000,
+      startDelay: 3000,
       registerTool: true,
       toolName: 'daily_schedule'
     })

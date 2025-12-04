@@ -5,6 +5,7 @@ interface ProviderConfigurable {
     session?: {
         platform?: string;
         userId?: string;
+        selfId?: string;
     };
 }
 interface ProviderDeps {
@@ -15,7 +16,7 @@ interface ProviderDeps {
 interface ContextHistory {
     fetchEntries?: (session: Session, count: number) => Promise<HistoryEntry[]>;
 }
-export declare function createAffinityProvider({ config, cache, store }: ProviderDeps): (_args: unknown, _variables: unknown, configurable?: ProviderConfigurable) => Promise<number>;
+export declare function createAffinityProvider({ config, cache, store }: ProviderDeps): (_args: unknown, _variables: unknown, configurable?: ProviderConfigurable) => Promise<number | string>;
 export declare function createRelationshipProvider({ store }: Pick<ProviderDeps, 'store'>): (args: unknown[] | undefined, _variables: unknown, configurable?: ProviderConfigurable) => Promise<string>;
 export declare function createContextAffinityProvider({ config, store, history }: {
     config: Config;

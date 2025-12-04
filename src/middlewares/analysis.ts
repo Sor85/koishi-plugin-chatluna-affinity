@@ -275,11 +275,10 @@ export function createAnalysisMiddleware(ctx: Context, config: Config, deps: Mid
 
     try {
       const manual = store.findManualRelationship(session.platform, session.userId)
-      const fallback = manual && typeof manual.initialAffinity === 'number' ? manual.initialAffinity : undefined
-      const hasManualOverride = fallback !== undefined
-      // 特殊关系不受 clamp 限制，可以突破好感度上下限
+      // 特殊关系用户不受 clamp 限制，可以突破好感度上下限
+      const hasManualOverride = !!manual?.relation
       const conditionalClamp = (value: number) => hasManualOverride ? Math.round(value) : store.clamp(value)
-      const result = await store.ensure(session, clampValue, fallback)
+      const result = await store.ensure(session, clampValue)
       const now = new Date()
       const storedShortTerm = Number(result.shortTermAffinity ?? 0)
       const storedLongTerm = Number(result.longTermAffinity ?? result.affinity ?? 0)
@@ -293,12 +292,7 @@ export function createAnalysisMiddleware(ctx: Context, config: Config, deps: Mid
       const previousCoefficient = Number.isFinite(result.coefficientState?.coefficient)
         ? result.coefficientState.coefficient
         : coefficientRules.base
-      const computedComposite = conditionalClamp(previousCoefficient * longTermTarget)
-      const storedComposite = Number.isFinite((result as unknown as { affinityOverride?: number }).affinityOverride)
-        ? Math.round((result as unknown as { affinityOverride: number }).affinityOverride)
-        : computedComposite
-      const needsCompositeRepair = storedComposite !== computedComposite
-      const oldAffinity = computedComposite
+      const oldAffinity = conditionalClamp(previousCoefficient * longTermTarget)
 
       let historyLines = await history.fetch(session)
       const currentUserMessage = session.content ?? ''
@@ -432,12 +426,12 @@ export function createAnalysisMiddleware(ctx: Context, config: Config, deps: Mid
 
       if (workingShortTerm >= shortTermRules.promoteThreshold) {
         longTermShift = shortTermRules.longTermPromoteStep
-        longTermTarget = store.clamp(longTermTarget + longTermShift)
+        longTermTarget = conditionalClamp(longTermTarget + longTermShift)
         workingShortTerm = computeShortTermReset()
         longTermChanged = true
       } else if (workingShortTerm <= shortTermRules.demoteThreshold) {
         longTermShift = -shortTermRules.longTermDemoteStep
-        longTermTarget = store.clamp(longTermTarget + longTermShift)
+        longTermTarget = conditionalClamp(longTermTarget + longTermShift)
         workingShortTerm = computeShortTermReset()
         longTermChanged = true
       }
@@ -456,7 +450,7 @@ export function createAnalysisMiddleware(ctx: Context, config: Config, deps: Mid
             temporaryBlockExpiresAt = activation.entry?.expiresAt ?? null
             temporaryPenaltyApplied = Math.max(0, shortTermConfig.penalty || 0)
             if (temporaryPenaltyApplied > 0) {
-              longTermTarget = store.clamp(longTermTarget - temporaryPenaltyApplied)
+              longTermTarget = conditionalClamp(longTermTarget - temporaryPenaltyApplied)
               longTermShift -= temporaryPenaltyApplied
               longTermChanged = true
             }
@@ -480,7 +474,7 @@ export function createAnalysisMiddleware(ctx: Context, config: Config, deps: Mid
         : store.composeState(longTermTarget, workingShortTerm)
       const nextCompositeAffinity = conditionalClamp(nextCoefficientState.coefficient * combinedState.longTermAffinity)
       const shortTermChanged = combinedState.shortTermAffinity !== result.shortTermAffinity || appliedDelta !== 0
-      const hasChanges = needsCompositeRepair || (nextCompositeAffinity !== oldAffinity) || shortTermChanged || longTermChanged
+      const hasChanges = (nextCompositeAffinity !== oldAffinity) || shortTermChanged || longTermChanged
       const actionEntries = appendActionEntry(result.actionStats?.entries, actionType, nowMs, actionWindow.maxEntries)
       const summarizedNextActions = summarizeActionEntries(actionEntries, actionWindow.windowMs, nowMs)
       const nextCounts = summarizedNextActions.counts
@@ -489,13 +483,9 @@ export function createAnalysisMiddleware(ctx: Context, config: Config, deps: Mid
 
       if (shouldPersist) {
         const level = store.resolveLevelByAffinity(nextCompositeAffinity)
-        const nextShortTermUpdatedAt = shortTermChanged ? now : (result.shortTermUpdatedAt || result.updatedAt || now)
-        const nextLongTermUpdatedAt = longTermChanged ? now : (result.longTermUpdatedAt || result.updatedAt || now)
         const extra = {
           longTermAffinity: combinedState.longTermAffinity,
           shortTermAffinity: combinedState.shortTermAffinity,
-          shortTermUpdatedAt: nextShortTermUpdatedAt,
-          longTermUpdatedAt: nextLongTermUpdatedAt,
           actionStats: { entries: actionEntries, total: summarizedNextActions.total, counts: nextCounts },
           chatCount: nextChatCount,
           coefficientState: {
@@ -506,10 +496,9 @@ export function createAnalysisMiddleware(ctx: Context, config: Config, deps: Mid
             inactivityDays: nextCoefficientState.inactivityDays,
             lastInteractionAt: now
           },
-          lastInteractionAt: now,
-          affinityOverride: nextCompositeAffinity
+          lastInteractionAt: now
         }
-        await store.save({ platform: session.platform, userId: session.userId, selfId: session?.selfId, session }, combinedState.affinity, true, level?.relation ?? '', extra)
+        await store.save({ platform: session.platform, userId: session.userId, selfId: session?.selfId, session }, combinedState.affinity, level?.relation ?? '', extra)
         cache.set(session.platform, session.userId, nextCompositeAffinity)
         if (hasChanges) {
           log('info', '好感度已更新', describeAffinityUpdate({

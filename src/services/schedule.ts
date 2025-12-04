@@ -445,7 +445,7 @@ export function createScheduleManager(ctx: Context, config: Config, deps: Schedu
       log('debug', '从缓存恢复今日日程', { date: dateStr })
     } else {
       // 启动时延迟生成日程，等待其他依赖插件加载完成
-      const startDelay = scheduleConfig.startDelay ?? 10000
+      const startDelay = scheduleConfig.startDelay ?? 3000
       log('debug', `日程生成将在 ${startDelay}ms 后启动`)
       ctx.setTimeout(() => {
         ensureSchedule().then((result) => {

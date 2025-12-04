@@ -143,7 +143,7 @@ const he = /* @__PURE__ */ E(ce, [["render", ue]]), me = ["onClick"], fe = ["onC
       p.value = "var-" + e.key, w.value = "";
       const t = {
         affinity: { section: "好感度设置", searchKey: "affinityVariableName" },
-        contextAffinity: { section: "好感度设置", searchKey: ["contextAffinityOverview", "上下文好感度设置"] },
+        contextAffinity: { section: "好感度设置", searchKey: ["contextAffinityOverview", "上下文好感度变量"] },
         relationship: { section: "关系设置", searchKey: "relationshipVariableName" },
         schedule: { section: "日程设置", searchKey: "variableName" },
         currentSchedule: { section: "日程设置", searchKey: "currentVariableName" },
