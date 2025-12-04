@@ -641,6 +641,20 @@ export function apply(ctx: Context, config: ConfigType): void {
         }
       }
       
+      // 尝试获取用户个性摘要（印象）
+      let impression: string | undefined
+      const analysisService = (ctx as unknown as { chatluna_group_analysis?: { getUserPersona?: (platform: string, selfId: string, userId: string) => Promise<{ profile: { summary: string } } | null> } }).chatluna_group_analysis
+      if (analysisService?.getUserPersona) {
+        try {
+          const persona = await analysisService.getUserPersona(platform, selfId, stripAtPrefix(userId))
+          if (persona?.profile?.summary) {
+            impression = persona.profile.summary
+          }
+        } catch {
+          // 获取个性摘要失败，忽略
+        }
+      }
+      
       const lines = [
         `用户：${displayNickname} ${stripAtPrefix(userId)}`,
         `关系：${record.relation || '——'}`,
@@ -649,7 +663,8 @@ export function apply(ctx: Context, config: ConfigType): void {
         `短期好感度：${state.shortTermAffinity}`,
         `综合系数：${coefficient.toFixed(2)}（连续互动 ${state.coefficientState?.streak ?? 0} 天）`,
         `交互统计：总计 ${state.chatCount} 次`,
-        `最后互动：${formatTimestamp(state.lastInteractionAt)}`
+        `最后互动：${formatTimestamp(state.lastInteractionAt)}`,
+        ...(impression ? [`印象：${impression}`] : [])
       ]
       
       if (shouldRenderImage && puppeteer?.page) {
@@ -672,7 +687,8 @@ export function apply(ctx: Context, config: ConfigType): void {
           streak: state.coefficientState?.streak ?? 0,
           chatCount: state.chatCount,
           lastInteraction: formatTimestamp(state.lastInteractionAt),
-          avatarUrl
+          avatarUrl,
+          impression
         })
         if (buffer) return h.image(buffer, 'image/png')
         ctx.logger?.('chatluna-affinity')?.warn?.('好感度详情图片渲染失败，已改为文本输出')

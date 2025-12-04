@@ -12,6 +12,7 @@ interface InspectData {
     chatCount: number;
     lastInteraction: string;
     avatarUrl?: string;
+    impression?: string;
 }
 export declare function createRenderInspect(ctx: Context): (data: InspectData) => Promise<Buffer | null>;
 export {};

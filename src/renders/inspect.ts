@@ -15,6 +15,7 @@ interface InspectData {
   chatCount: number
   lastInteraction: string
   avatarUrl?: string
+  impression?: string
 }
 
 export function createRenderInspect(ctx: Context) {
@@ -104,6 +105,25 @@ export function createRenderInspect(ctx: Context) {
       font-weight: 600;
       color: #374151;
     }
+    .impression-section {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #f3f4f6;
+    }
+    .impression-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #6b7280;
+      margin-bottom: 10px;
+    }
+    .impression-content {
+      font-size: 14px;
+      color: #374151;
+      line-height: 1.6;
+      background: #f9fafb;
+      border-radius: 8px;
+      padding: 12px;
+    }
   </style>
 </head>
 <body>
@@ -150,6 +170,11 @@ export function createRenderInspect(ctx: Context) {
           <span class="detail-val">${data.lastInteraction || '——'}</span>
         </div>
       </div>
+      ${data.impression ? `
+      <div class="impression-section">
+        <div class="impression-title">印象</div>
+        <div class="impression-content">${data.impression}</div>
+      </div>` : ''}
     </div>
   </div>
 </body>
