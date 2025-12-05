@@ -30,7 +30,7 @@ export function createBlacklistGuard(options: BlacklistGuardOptions) {
 
         if (permanent.isBlacklisted(platform, userId, channelId)) {
             if (config.blacklistLogInterception) {
-                log('debug', '消息被永久黑名单拦截', { platform, userId })
+                log('info', '消息被永久黑名单拦截', { platform, userId })
             }
             return true
         }
@@ -38,7 +38,7 @@ export function createBlacklistGuard(options: BlacklistGuardOptions) {
         const tempEntry = temporary.isBlocked(platform, userId)
         if (tempEntry) {
             if (config.blacklistLogInterception) {
-                log('debug', '消息被临时黑名单拦截', {
+                log('info', '消息被临时黑名单拦截', {
                     platform,
                     userId,
                     expiresAt: tempEntry.expiresAt
@@ -50,7 +50,7 @@ export function createBlacklistGuard(options: BlacklistGuardOptions) {
         const configTemp = temporary.isTemporarilyBlacklisted(platform, userId)
         if (configTemp) {
             if (config.blacklistLogInterception) {
-                log('debug', '消息被配置临时黑名单拦截', {
+                log('info', '消息被配置临时黑名单拦截', {
                     platform,
                     userId,
                     expiresAt: configTemp.expiresAt

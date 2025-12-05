@@ -8,4 +8,3 @@ export interface TempBlockCommandDeps extends CommandDependencies {
     temporaryBlacklist: TemporaryBlacklistService;
 }
 export declare function registerTempBlockCommand(deps: TempBlockCommandDeps): void;
-export declare function registerTempBlacklistCommand(deps: TempBlockCommandDeps): void;

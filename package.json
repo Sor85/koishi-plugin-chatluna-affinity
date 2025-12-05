@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-chatluna-affinity",
   "description": "为 ChatLuna Character 提供 {好感度}、{关系}、{日程} 等变量并提供对应的工具调用和低好感自动拉黑功能。",
-  "version": "0.2.1-alpha.10",
+  "version": "0.2.2-alpha.1",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [

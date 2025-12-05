@@ -1,6 +1,6 @@
 /**
  * 黑名单列表命令
- * 查看自动黑名单和临时黑名单
+ * 查看永久黑名单和临时黑名单
  */
 
 import { h } from 'koishi'
@@ -14,11 +14,22 @@ export interface BlacklistCommandDeps extends CommandDependencies {
     temporaryBlacklist: TemporaryBlacklistService
 }
 
+interface MergedBlacklistEntry {
+    userId: string
+    nickname?: string
+    blockedAt?: string
+    note?: string
+    isTemp: boolean
+    expiresAt?: string
+    durationHours?: number
+    penalty?: number
+}
+
 async function enrichBlacklistRecords(
-    records: { userId: string; nickname?: string; blockedAt?: string; note?: string }[],
+    records: MergedBlacklistEntry[],
     session: Session,
     deps: BlacklistCommandDeps
-): Promise<BlacklistEnrichedItem[]> {
+): Promise<(BlacklistEnrichedItem & { isTemp: boolean; expiresAt?: string; durationHours?: number; penalty?: number })[]> {
     const { resolveUserIdentity, stripAtPrefix } = deps
     return Promise.all(
         records.map(async (entry) => {
@@ -38,14 +49,14 @@ async function enrichBlacklistRecords(
 }
 
 export function registerBlacklistCommand(deps: BlacklistCommandDeps) {
-    const { ctx, config, renders, permanentBlacklist, resolveGroupId, stripAtPrefix } = deps
+    const { ctx, config, renders, permanentBlacklist, temporaryBlacklist, resolveGroupId, stripAtPrefix } = deps
 
     ctx.command(
         'affinity.blacklist [limit:number] [platform:string] [image]',
-        '查看自动黑名单列表',
+        '查看黑名单列表',
         { authority: 2 }
     )
-        .alias('自动黑名单')
+        .alias('黑名单')
         .action(async ({ session }, limitArg, platformArg, imageArg) => {
             const parsedLimit = Number(limitArg)
             const limit = Math.max(
@@ -61,21 +72,40 @@ export function registerBlacklistCommand(deps: BlacklistCommandDeps) {
             if (shouldRenderImage && !puppeteer?.page)
                 return '当前环境未启用 puppeteer，已改为文本模式。'
 
+            const platform = platformArg || session?.platform
             const groupId = resolveGroupId(session as Session)
-            const records = permanentBlacklist.list(platformArg || session?.platform, groupId)
-            if (!records.length)
-                return groupId ? '本群暂无自动拉黑记录。' : '当前暂无自动拉黑记录。'
 
-            const limited = records.slice(0, limit)
+            const permanentRecords = permanentBlacklist.list(platform, groupId)
+            const tempRecords = temporaryBlacklist.listTemporary(platform)
+
+            const merged: MergedBlacklistEntry[] = [
+                ...permanentRecords.map((r) => ({ ...r, isTemp: false as const })),
+                ...tempRecords.map((r) => ({
+                    userId: r.userId,
+                    nickname: r.nickname,
+                    blockedAt: r.blockedAt,
+                    note: r.note,
+                    isTemp: true as const,
+                    expiresAt: r.expiresAt,
+                    durationHours: Number(r.durationHours) || undefined,
+                    penalty: Number(r.penalty) || undefined
+                }))
+            ]
+
+            if (!merged.length)
+                return groupId ? '本群暂无拉黑记录。' : '当前暂无拉黑记录。'
+
+            const limited = merged.slice(0, limit)
             const enriched = await enrichBlacklistRecords(limited, session as Session, deps)
             const textLines = [
-                '# 昵称 用户ID 拉黑时间 备注',
+                '# 昵称 用户ID 类型 时间 备注',
                 ...enriched.map((item, index) => {
                     const note = item.note ? item.note : '——'
-                    const time = item.blockedAt || '——'
+                    const time = item.isTemp ? (item.expiresAt || '——') : (item.blockedAt || '——')
                     const nickname = stripAtPrefix(item.nickname || item.userId)
                     const userIdDisplay = stripAtPrefix(item.userId)
-                    return `${index + 1}. ${nickname} ${userIdDisplay} ${time} ${note}`
+                    const tag = item.isTemp ? '[临时]' : '[永久]'
+                    return `${index + 1}. ${nickname} ${userIdDisplay} ${tag} ${time} ${note}`
                 })
             ]
 
@@ -84,8 +114,11 @@ export function registerBlacklistCommand(deps: BlacklistCommandDeps) {
                     index: index + 1,
                     nickname: stripAtPrefix(item.nickname || item.userId),
                     userId: stripAtPrefix(item.userId),
-                    timeInfo: item.blockedAt || '——',
+                    timeInfo: item.isTemp ? `到期: ${item.expiresAt || '——'}` : (item.blockedAt || '——'),
                     note: item.note || '——',
+                    isTemp: item.isTemp,
+                    penalty: item.penalty,
+                    tag: item.isTemp ? '临时' : '永久',
                     avatarUrl: (() => {
                         const rawId = stripAtPrefix(item.userId)
                         const numericId = rawId.match(/^\d+$/) ? rawId : undefined
@@ -94,7 +127,7 @@ export function registerBlacklistCommand(deps: BlacklistCommandDeps) {
                             : undefined
                     })()
                 }))
-                const buffer = await renders.blacklist('自动黑名单', items)
+                const buffer = await renders.blacklist('黑名单', items)
                 if (buffer) return h.image(buffer, 'image/png')
                 return textLines.join('\n')
             }

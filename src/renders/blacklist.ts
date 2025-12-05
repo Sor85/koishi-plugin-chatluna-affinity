@@ -17,6 +17,7 @@ export interface BlacklistItem {
     avatarUrl?: string
     isTemp?: boolean
     penalty?: number
+    tag?: string
 }
 
 const BLACKLIST_STYLE = `
@@ -53,6 +54,7 @@ function buildBlacklistHtml(title: string, items: BlacklistItem[]): string {
       <div class="info">
         <div class="name-row">
           <span class="name">${item.nickname}</span>
+          ${item.tag ? `<span class="badge ${item.isTemp ? 'badge-orange' : 'badge-red'}" style="margin-left: 4px;">${item.tag}</span>` : ''}
         </div>
         <div class="sub-text">${item.userId}</div>
         ${item.note && item.note !== '——' ? `<div class="note">备注: ${item.note}</div>` : ''}

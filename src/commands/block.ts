@@ -12,7 +12,7 @@ export interface BlockCommandDeps extends CommandDependencies {
 }
 
 export function registerBlockCommand(deps: BlockCommandDeps) {
-    const { ctx, cache, permanentBlacklist, resolveUserIdentity, resolveGroupId, stripAtPrefix } =
+    const { ctx, cache, permanentBlacklist, resolveUserIdentity, resolveGroupId, stripAtPrefix, fetchMember } =
         deps
 
     ctx.command(
@@ -57,7 +57,19 @@ export function registerBlockCommand(deps: BlockCommandDeps) {
             const groupId = resolveGroupId(session as Session)
             const removed = permanentBlacklist.remove(platform, normalizedUserId, groupId)
             cache.clear(platform, normalizedUserId)
-            if (removed) return `已解除 ${platform}/${normalizedUserId} 的自动黑名单。`
-            return `${platform}/${normalizedUserId} 不在自动黑名单中。`
+            if (removed) {
+                let nickname = normalizedUserId
+                if (session) {
+                    const memberInfo = await fetchMember(session as Session, normalizedUserId)
+                    if (memberInfo) {
+                        const raw = memberInfo as unknown as Record<string, unknown>
+                        const card = raw.card || (raw.user as Record<string, unknown>)?.card
+                        const nick = raw.nickname || raw.nick || (raw.user as Record<string, unknown>)?.nickname
+                        nickname = String(card || nick || normalizedUserId).trim()
+                    }
+                }
+                return `已解除 ${nickname}(${normalizedUserId}) 的自动黑名单。`
+            }
+            return `${normalizedUserId} 不在自动黑名单中。`
         })
 }

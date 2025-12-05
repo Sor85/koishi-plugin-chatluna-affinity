@@ -47,7 +47,6 @@ import {
     registerBlacklistCommand,
     registerBlockCommand,
     registerTempBlockCommand,
-    registerTempBlacklistCommand,
     registerGroupListCommand,
     registerClearAllCommand,
     registerAdjustCommand
@@ -331,7 +330,6 @@ export function apply(ctx: Context, config: Config): void {
     registerBlacklistCommand({ ...commandDeps, permanentBlacklist, temporaryBlacklist })
     registerBlockCommand({ ...commandDeps, permanentBlacklist })
     registerTempBlockCommand({ ...commandDeps, temporaryBlacklist })
-    registerTempBlacklistCommand({ ...commandDeps, temporaryBlacklist })
     registerGroupListCommand(commandDeps)
     registerClearAllCommand(commandDeps)
 

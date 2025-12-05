@@ -21,7 +21,8 @@ export function registerTempBlockCommand(deps: TempBlockCommandDeps) {
         temporaryBlacklist,
         resolveUserIdentity,
         resolveGroupId,
-        stripAtPrefix
+        stripAtPrefix,
+        fetchMember
     } = deps
 
     ctx.command(
@@ -95,71 +96,20 @@ export function registerTempBlockCommand(deps: TempBlockCommandDeps) {
             if (!normalizedUserId) return '用户 ID 不能为空。'
             const removed = temporaryBlacklist.removeTemporary(platform, normalizedUserId)
             cache.clear(platform, normalizedUserId)
-            if (removed) return `已解除 ${platform}/${normalizedUserId} 的临时黑名单。`
-            return `${platform}/${normalizedUserId} 不在临时黑名单中。`
-        })
-}
-
-export function registerTempBlacklistCommand(deps: TempBlockCommandDeps) {
-    const { ctx, config, renders, temporaryBlacklist, stripAtPrefix } = deps
-
-    ctx.command(
-        'affinity.tempBlacklist [limit:number] [platform:string] [image]',
-        '查看临时黑名单列表',
-        { authority: 2 }
-    )
-        .alias('临时黑名单')
-        .action(async ({ session }, limitArg, platformArg, imageArg) => {
-            const parsedLimit = Number(limitArg)
-            const limit = Math.max(
-                1,
-                Math.min(Number.isFinite(parsedLimit) ? parsedLimit : config.blacklistDefaultLimit, 100)
-            )
-            const shouldRenderImage =
-                imageArg === undefined
-                    ? !!config.shortTermBlacklist?.renderAsImage
-                    : !['0', 'false', 'text', 'no', 'n'].includes(String(imageArg).toLowerCase())
-            const puppeteer = (ctx as unknown as { puppeteer?: { page?: () => Promise<unknown> } })
-                .puppeteer
-            if (shouldRenderImage && !puppeteer?.page)
-                return '当前环境未启用 puppeteer，已改为文本模式。'
-
-            const records = temporaryBlacklist.listTemporary(platformArg || session?.platform)
-            if (!records.length) return '当前暂无临时拉黑记录。'
-
-            const limited = records.slice(0, limit)
-            const textLines = [
-                '# 昵称 用户ID 到期时间 时长 惩罚 备注',
-                ...limited.map((item, index) => {
-                    const note = item.note ? item.note : '——'
-                    const expiresAt = item.expiresAt || '——'
-                    const nickname = stripAtPrefix(item.nickname || item.userId)
-                    const userIdDisplay = stripAtPrefix(item.userId)
-                    return `${index + 1}. ${nickname} ${userIdDisplay} ${expiresAt} ${item.durationHours}h ${item.penalty} ${note}`
-                })
-            ]
-
-            if (shouldRenderImage) {
-                const items = limited.map((item, index) => ({
-                    index: index + 1,
-                    nickname: stripAtPrefix(item.nickname || item.userId),
-                    userId: stripAtPrefix(item.userId),
-                    timeInfo: `${item.durationHours} (到期: ${item.expiresAt || '——'})`,
-                    note: item.note || '——',
-                    isTemp: true,
-                    penalty: Number(item.penalty),
-                    avatarUrl: (() => {
-                        const rawId = stripAtPrefix(item.userId)
-                        const numericId = rawId.match(/^\d+$/) ? rawId : undefined
-                        return numericId
-                            ? `https://q1.qlogo.cn/g?b=qq&nk=${numericId}&s=640`
-                            : undefined
-                    })()
-                }))
-                const buffer = await renders.blacklist('临时黑名单', items)
-                if (buffer) return h.image(buffer, 'image/png')
+            if (removed) {
+                let nickname = normalizedUserId
+                if (session) {
+                    const memberInfo = await fetchMember(session as Session, normalizedUserId)
+                    if (memberInfo) {
+                        const raw = memberInfo as unknown as Record<string, unknown>
+                        const card = raw.card || (raw.user as Record<string, unknown>)?.card
+                        const nick = raw.nickname || raw.nick || (raw.user as Record<string, unknown>)?.nickname
+                        nickname = String(card || nick || normalizedUserId).trim()
+                    }
+                }
+                return `已解除 ${nickname}(${normalizedUserId}) 的临时黑名单。`
             }
-
-            return textLines.join('\n')
+            return `${normalizedUserId} 不在临时黑名单中。`
         })
 }
+

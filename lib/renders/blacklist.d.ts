@@ -13,6 +13,7 @@ export interface BlacklistItem {
     avatarUrl?: string;
     isTemp?: boolean;
     penalty?: number;
+    tag?: string;
 }
 export declare function createBlacklistRenderer(ctx: Context, log?: LogFn): (title: string, items: BlacklistItem[]) => Promise<Buffer | null>;
 export type BlacklistRenderer = ReturnType<typeof createBlacklistRenderer>;

@@ -29,7 +29,7 @@ export const BlacklistSchema = Schema.object({
             note: Schema.string().default('').description('备注'),
             platform: Schema.string().default('').hidden()
         })
-    ).role('table').default([]).description('自动拉黑记录'),
+    ).role('table').default([]).description('拉黑记录'),
     temporaryBlacklist: Schema.array(
         Schema.object({
             userId: Schema.string().default('').description('用户 ID'),

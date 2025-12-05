@@ -117,11 +117,19 @@ export const COMMON_STYLE = `
     border-radius: 999px;
     font-weight: 500;
     white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
   
   .badge-red {
     background: #fee2e2;
     color: #ef4444;
+  }
+
+  .badge-orange {
+    background: #ffedd5;
+    color: #f97316;
   }
   
   .badge-gray {

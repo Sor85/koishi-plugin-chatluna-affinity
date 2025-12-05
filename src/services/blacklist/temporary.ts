@@ -70,6 +70,28 @@ export function createTemporaryBlacklistManager(options: TemporaryBlacklistOptio
         const entry: InMemoryTemporaryEntry = { expiresAt, nickname }
         memoryCache.set(key, entry)
 
+        const durationHours = Math.round(shortTermOptions.durationMs / (60 * 60 * 1000))
+        const penalty = shortTermOptions.penalty ?? 0
+        const configEntry: TemporaryBlacklistEntry = {
+            platform,
+            userId,
+            blockedAt: formatBeijingTimestamp(now),
+            expiresAt: formatBeijingTimestamp(new Date(expiresAt)),
+            nickname,
+            note: 'auto',
+            channelId: '',
+            durationHours: `${durationHours}小时`,
+            penalty: `-${penalty}`
+        }
+        if (!config.temporaryBlacklist) config.temporaryBlacklist = []
+        const existingIndex = config.temporaryBlacklist.findIndex(
+            (e) => e.platform === platform && e.userId === userId
+        )
+        if (existingIndex < 0) {
+            config.temporaryBlacklist.push(configEntry)
+            applyConfigUpdate()
+        }
+
         log('info', '已激活临时拉黑', { platform, userId, nickname, expiresAt: new Date(expiresAt) })
         return { activated: true, entry }
     }
