@@ -1,29 +1,21 @@
+/**
+ * 日程渲染器
+ * 渲染每日日程图片
+ */
+
 import type { Context } from 'koishi'
-import { COMMON_STYLE, Puppeteer, Page } from './utils'
+import type { LogFn, ScheduleEntry } from '../types'
+import { renderHtml } from './base'
+import { COMMON_STYLE } from './styles'
 
-interface ScheduleEntry {
-  start: string
-  end: string
-  summary: string
+export interface ScheduleRenderData {
+    title: string
+    description: string
+    entries: ScheduleEntry[]
+    date: string
 }
 
-interface ScheduleData {
-  title: string
-  description: string
-  entries: ScheduleEntry[]
-  date: string
-}
-
-export function createRenderSchedule(ctx: Context) {
-  return async function renderSchedule(data: ScheduleData): Promise<Buffer | null> {
-    const puppeteer = (ctx as unknown as { puppeteer?: Puppeteer }).puppeteer
-    if (!puppeteer?.page) return null
-
-    const html = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <style>
+const SCHEDULE_STYLE = `
     ${COMMON_STYLE}
     .time-col {
       display: flex;
@@ -55,7 +47,14 @@ export function createRenderSchedule(ctx: Context) {
       margin-bottom: 16px;
       padding: 0 8px;
     }
-  </style>
+`
+
+function buildScheduleHtml(data: ScheduleRenderData): string {
+    return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <style>${SCHEDULE_STYLE}</style>
 </head>
 <body>
   <div class="container" id="schedule-root">
@@ -64,7 +63,9 @@ export function createRenderSchedule(ctx: Context) {
       <h2>${data.date}</h2>
     </div>
     ${data.description ? `<div class="description">${data.description}</div>` : ''}
-    ${data.entries.map(entry => `
+    ${data.entries
+        .map(
+            (entry) => `
     <div class="card">
       <div class="time-col">
         <div class="time-start">${entry.start}</div>
@@ -74,28 +75,28 @@ export function createRenderSchedule(ctx: Context) {
         <div class="summary">${entry.summary}</div>
       </div>
     </div>
-    `).join('')}
+    `
+        )
+        .join('')}
   </div>
 </body>
 </html>`
-
-    let page: Page | undefined
-    try {
-      page = await puppeteer.page()
-      await page.setViewport({ width: 600, height: 150 + data.entries.length * 100, deviceScaleFactor: 2 })
-      await page.setContent(html, { waitUntil: 'networkidle0' })
-      const element = await page.$('#schedule-root')
-      if (!element) return null
-      const buffer = await element.screenshot({ omitBackground: false })
-      return buffer
-    } catch (error) {
-      const logger = ctx.logger as { warn?: (msg: string, err: unknown) => void } | undefined
-      logger?.warn?.('日程图片渲染失败', error)
-      return null
-    } finally {
-      try {
-        await page?.close()
-      } catch { }
-    }
-  }
 }
+
+export function createScheduleRenderer(ctx: Context, log?: LogFn) {
+    return async function renderSchedule(data: ScheduleRenderData): Promise<Buffer | null> {
+        const html = buildScheduleHtml(data)
+        return renderHtml(
+            ctx,
+            html,
+            {
+                width: 600,
+                height: 150 + data.entries.length * 100,
+                selector: '#schedule-root'
+            },
+            log
+        )
+    }
+}
+
+export type ScheduleRenderer = ReturnType<typeof createScheduleRenderer>

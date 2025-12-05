@@ -1,43 +1,18 @@
+/**
+ * 表格渲染器
+ * 渲染通用表格图片
+ */
+
 import type { Context } from 'koishi'
+import type { LogFn } from '../types'
+import { renderHtml } from './base'
 
-interface RenderOptions {
-  heading?: string
-  subHeading?: string
+export interface TableRenderOptions {
+    heading?: string
+    subHeading?: string
 }
 
-interface Puppeteer {
-  page: () => Promise<Page>
-}
-
-interface Page {
-  setViewport: (options: { width: number; height: number }) => Promise<void>
-  setContent: (html: string, options: { waitUntil: string }) => Promise<void>
-  $: (selector: string) => Promise<Element | null>
-  close: () => Promise<void>
-}
-
-interface Element {
-  screenshot: (options: { omitBackground: boolean }) => Promise<Buffer>
-}
-
-export function createRenderTableImage(ctx: Context) {
-  return async function renderTableImage(
-    title: string,
-    headers: string[],
-    rows: string[][],
-    options: RenderOptions = {}
-  ): Promise<Buffer | null> {
-    const puppeteer = (ctx as unknown as { puppeteer?: Puppeteer }).puppeteer
-    if (!puppeteer?.page) return null
-
-    const normalizedRows = Array.isArray(rows) ? rows : []
-    const heading = options.heading ?? title
-    const subHeading = options.subHeading ?? ''
-    const html = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <style>
+const TABLE_STYLE = `
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;600&family=Noto+Color+Emoji&display=swap');
     body {
       margin: 0;
@@ -101,7 +76,23 @@ export function createRenderTableImage(ctx: Context) {
     tr:nth-child(odd) td {
       background: #fbfcfe;
     }
-  </style>
+`
+
+function buildTableHtml(
+    title: string,
+    headers: string[],
+    rows: string[][],
+    options: TableRenderOptions
+): string {
+    const heading = options.heading ?? title
+    const subHeading = options.subHeading ?? ''
+    const normalizedRows = Array.isArray(rows) ? rows : []
+
+    return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <style>${TABLE_STYLE}</style>
 </head>
 <body>
   <div class="container" id="table-root">
@@ -113,33 +104,39 @@ export function createRenderTableImage(ctx: Context) {
       </thead>
       <tbody>
         ${normalizedRows
-          .map((line) => `<tr>${line.map((cell, index) => `<td class="${index === 0 ? 'time-col' : 'content-col'}">${cell}</td>`).join('')}</tr>`)
-          .join('')}
+            .map(
+                (line) =>
+                    `<tr>${line.map((cell, index) => `<td class="${index === 0 ? 'time-col' : 'content-col'}">${cell}</td>`).join('')}</tr>`
+            )
+            .join('')}
       </tbody>
     </table>
   </div>
 </body>
 </html>`
-
-    let page: Page | undefined
-    try {
-      page = await puppeteer.page()
-      await page.setViewport({ width: 800, height: 220 + normalizedRows.length * 48 })
-      await page.setContent(html, { waitUntil: 'networkidle0' })
-      const element = await page.$('#table-root')
-      if (!element) return null
-      const buffer = await element.screenshot({ omitBackground: false })
-      return buffer
-    } catch (error) {
-      const logger = ctx.logger as { warn?: (msg: string, err: unknown) => void } | undefined
-      logger?.warn?.('表格图片渲染失败', error)
-      return null
-    } finally {
-      try {
-        await page?.close()
-      } catch {
-        // ignore
-      }
-    }
-  }
 }
+
+export function createTableRenderer(ctx: Context, log?: LogFn) {
+    return async function renderTable(
+        title: string,
+        headers: string[],
+        rows: string[][],
+        options: TableRenderOptions = {}
+    ): Promise<Buffer | null> {
+        const normalizedRows = Array.isArray(rows) ? rows : []
+        const html = buildTableHtml(title, headers, normalizedRows, options)
+        return renderHtml(
+            ctx,
+            html,
+            {
+                width: 800,
+                height: 220 + normalizedRows.length * 48,
+                deviceScaleFactor: 1,
+                selector: '#table-root'
+            },
+            log
+        )
+    }
+}
+
+export type TableRenderer = ReturnType<typeof createTableRenderer>

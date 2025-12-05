@@ -1,0 +1,36 @@
+/**
+ * 日程 Schema
+ * 定义日程功能相关的配置项
+ */
+
+import { Schema } from 'koishi'
+import { DEFAULT_SCHEDULE_PROMPT } from '../constants'
+
+export const ScheduleSchema = Schema.object({
+    schedule: Schema.object({
+        enabled: Schema.boolean().default(true).description('是否启用日程功能'),
+        variableName: Schema.string().default('schedule').description('今日日程变量名称'),
+        currentVariableName: Schema.string().default('currentSchedule').description('当前日程变量名称'),
+        timezone: Schema.string().default('Asia/Shanghai').description('用于日程生成的时区'),
+        prompt: Schema.string()
+            .role('textarea')
+            .default(DEFAULT_SCHEDULE_PROMPT)
+            .description('日程生成提示词模板（可使用 {date}、{weekday}、{persona} 等占位符）'),
+        renderAsImage: Schema.boolean().default(false).description('将今日日程渲染为图片'),
+        startDelay: Schema.number().default(3000).description('启动延迟（毫秒），等待 ChatLuna 加载完成'),
+        registerTool: Schema.boolean().default(true).description('注册 ChatLuna 工具：获取今日日程'),
+        toolName: Schema.string().default('daily_schedule').description('ChatLuna 工具名称：获取今日日程')
+    })
+        .default({
+            enabled: true,
+            variableName: 'schedule',
+            currentVariableName: 'currentSchedule',
+            timezone: 'Asia/Shanghai',
+            prompt: DEFAULT_SCHEDULE_PROMPT,
+            renderAsImage: false,
+            startDelay: 3000,
+            registerTool: true,
+            toolName: 'daily_schedule'
+        })
+        .description('日程设置')
+})

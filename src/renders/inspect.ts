@@ -1,33 +1,30 @@
+/**
+ * 详情渲染器
+ * 渲染好感度详情卡片图片
+ */
+
 import type { Context } from 'koishi'
+import type { LogFn } from '../types'
+import { renderHtml } from './base'
+import { COMMON_STYLE } from './styles'
 
-import { COMMON_STYLE, Puppeteer, Page } from './utils'
-
-interface InspectData {
-  userId: string
-  nickname: string
-  platform: string
-  relation: string
-  compositeAffinity: number
-  longTermAffinity: number
-  shortTermAffinity: number
-  coefficient: number
-  streak: number
-  chatCount: number
-  lastInteraction: string
-  avatarUrl?: string
-  impression?: string
+export interface InspectData {
+    userId: string
+    nickname: string
+    platform: string
+    relation: string
+    compositeAffinity: number
+    longTermAffinity: number
+    shortTermAffinity: number
+    coefficient: number
+    streak: number
+    chatCount: number
+    lastInteraction: string
+    avatarUrl?: string
+    impression?: string
 }
 
-export function createRenderInspect(ctx: Context) {
-  return async function renderInspect(data: InspectData): Promise<Buffer | null> {
-    const puppeteer = (ctx as unknown as { puppeteer?: Puppeteer }).puppeteer
-    if (!puppeteer?.page) return null
-
-    const html = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <style>
+const INSPECT_STYLE = `
     ${COMMON_STYLE}
     .card-inspect {
       background: #ffffff;
@@ -124,15 +121,23 @@ export function createRenderInspect(ctx: Context) {
       border-radius: 8px;
       padding: 12px;
     }
-  </style>
+`
+
+function buildInspectHtml(data: InspectData): string {
+    return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <style>${INSPECT_STYLE}</style>
 </head>
 <body>
   <div class="container" style="width: 480px; padding: 40px;" id="inspect-root">
     <div class="card-inspect">
       <div class="header-inspect">
-        ${data.avatarUrl
-          ? `<img class="avatar-lg" src="${data.avatarUrl}" onerror="this.style.display='none'" />`
-          : `<div class="avatar-placeholder-lg">${data.nickname.charAt(0)}</div>`
+        ${
+            data.avatarUrl
+                ? `<img class="avatar-lg" src="${data.avatarUrl}" onerror="this.style.display='none'" />`
+                : `<div class="avatar-placeholder-lg">${data.nickname.charAt(0)}</div>`
         }
         <div class="user-info">
           <div class="nickname-lg">${data.nickname}</div>
@@ -144,7 +149,7 @@ export function createRenderInspect(ctx: Context) {
       <div class="stats-grid">
         <div class="stat-item">
           <div class="stat-value-lg primary">${data.compositeAffinity}</div>
-          <div class="stat-label">综合好感度</div>
+          <div class="stat-label">好感度</div>
         </div>
         <div class="stat-item">
           <div class="stat-value-lg">${data.chatCount}</div>
@@ -162,7 +167,7 @@ export function createRenderInspect(ctx: Context) {
 
       <div class="detail-list">
         <div class="detail-row">
-          <span class="detail-label">综合系数</span>
+          <span class="detail-label">好感度系数</span>
           <span class="detail-val">${data.coefficient.toFixed(2)}（连续 ${data.streak} 天）</span>
         </div>
         <div class="detail-row" style="border-bottom: 1px solid #f3f4f6;">
@@ -170,35 +175,35 @@ export function createRenderInspect(ctx: Context) {
           <span class="detail-val">${data.lastInteraction || '——'}</span>
         </div>
       </div>
-      ${data.impression ? `
+      ${
+          data.impression
+              ? `
       <div class="impression-section">
         <div class="impression-title">印象</div>
         <div class="impression-content">${data.impression}</div>
-      </div>` : ''}
+      </div>`
+              : ''
+      }
     </div>
   </div>
 </body>
 </html>`
-
-    let page: Page | undefined
-    try {
-      page = await puppeteer.page()
-      await page.setViewport({ width: 480, height: 600, deviceScaleFactor: 2 })
-      await page.setContent(html, { waitUntil: 'networkidle0' })
-      const element = await page.$('#inspect-root')
-      if (!element) return null
-      const buffer = await element.screenshot({ omitBackground: false })
-      return buffer
-    } catch (error) {
-      const logger = ctx.logger as { warn?: (msg: string, err: unknown) => void } | undefined
-      logger?.warn?.('好感度详情图片渲染失败', error)
-      return null
-    } finally {
-      try {
-        await page?.close()
-      } catch {
-        // ignore
-      }
-    }
-  }
 }
+
+export function createInspectRenderer(ctx: Context, log?: LogFn) {
+    return async function renderInspect(data: InspectData): Promise<Buffer | null> {
+        const html = buildInspectHtml(data)
+        return renderHtml(
+            ctx,
+            html,
+            {
+                width: 480,
+                height: 600,
+                selector: '#inspect-root'
+            },
+            log
+        )
+    }
+}
+
+export type InspectRenderer = ReturnType<typeof createInspectRenderer>

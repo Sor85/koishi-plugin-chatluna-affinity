@@ -1,5 +1,10 @@
+/**
+ * 详情渲染器
+ * 渲染好感度详情卡片图片
+ */
 import type { Context } from 'koishi';
-interface InspectData {
+import type { LogFn } from '../types';
+export interface InspectData {
     userId: string;
     nickname: string;
     platform: string;
@@ -14,5 +19,5 @@ interface InspectData {
     avatarUrl?: string;
     impression?: string;
 }
-export declare function createRenderInspect(ctx: Context): (data: InspectData) => Promise<Buffer | null>;
-export {};
+export declare function createInspectRenderer(ctx: Context, log?: LogFn): (data: InspectData) => Promise<Buffer | null>;
+export type InspectRenderer = ReturnType<typeof createInspectRenderer>;

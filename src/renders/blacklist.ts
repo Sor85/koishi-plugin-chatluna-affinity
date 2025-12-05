@@ -1,50 +1,54 @@
-import type { Context } from 'koishi'
-import { COMMON_STYLE, Puppeteer, Page } from './utils'
+/**
+ * 黑名单渲染器
+ * 渲染黑名单列表图片
+ */
 
-interface BlacklistItem {
-  index: number
-  nickname: string
-  userId: string
-  timeInfo: string // "2023-01-01" or "12h (expires ...)"
-  note: string
-  avatarUrl?: string
-  isTemp?: boolean
-  penalty?: number
+import type { Context } from 'koishi'
+import type { LogFn } from '../types'
+import { renderHtml } from './base'
+import { COMMON_STYLE } from './styles'
+
+export interface BlacklistItem {
+    index: number
+    nickname: string
+    userId: string
+    timeInfo: string
+    note: string
+    avatarUrl?: string
+    isTemp?: boolean
+    penalty?: number
 }
 
-export function createRenderBlacklist(ctx: Context) {
-  return async function renderBlacklist(
-    title: string,
-    items: BlacklistItem[]
-  ): Promise<Buffer | null> {
-    const puppeteer = (ctx as unknown as { puppeteer?: Puppeteer }).puppeteer
-    if (!puppeteer?.page) return null
-
-    const html = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <style>
+const BLACKLIST_STYLE = `
     ${COMMON_STYLE}
     .note {
       font-size: 13px;
       color: #6b7280;
       margin-top: 4px;
-      /* 移除灰框样式 */
     }
-  </style>
+`
+
+function buildBlacklistHtml(title: string, items: BlacklistItem[]): string {
+    return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <style>${BLACKLIST_STYLE}</style>
 </head>
 <body>
   <div class="container" id="list-root">
     <div class="header">
       <h1>${title}</h1>
     </div>
-    ${items.map(item => `
+    ${items
+        .map(
+            (item) => `
     <div class="card">
       <div class="rank-num" style="font-size: 16px; color: #9ca3af; width: 24px;">${item.index}</div>
-      ${item.avatarUrl 
-        ? `<img class="avatar" src="${item.avatarUrl}" onerror="this.style.display='none'" />`
-        : `<div class="avatar-placeholder">${item.nickname.charAt(0)}</div>`
+      ${
+          item.avatarUrl
+              ? `<img class="avatar" src="${item.avatarUrl}" onerror="this.style.display='none'" />`
+              : `<div class="avatar-placeholder">${item.nickname.charAt(0)}</div>`
       }
       <div class="info">
         <div class="name-row">
@@ -58,28 +62,31 @@ export function createRenderBlacklist(ctx: Context) {
         ${item.isTemp && item.penalty ? `<div class="badge badge-red" style="margin-top: 4px;">扣除 ${item.penalty} 好感</div>` : ''}
       </div>
     </div>
-    `).join('')}
+    `
+        )
+        .join('')}
   </div>
 </body>
 </html>`
-
-    let page: Page | undefined
-    try {
-      page = await puppeteer.page()
-      await page.setViewport({ width: 600, height: 100 + items.length * 120, deviceScaleFactor: 2 })
-      await page.setContent(html, { waitUntil: 'networkidle0' })
-      const element = await page.$('#list-root')
-      if (!element) return null
-      const buffer = await element.screenshot({ omitBackground: false })
-      return buffer
-    } catch (error) {
-      const logger = ctx.logger as { warn?: (msg: string, err: unknown) => void } | undefined
-      logger?.warn?.('黑名单图片渲染失败', error)
-      return null
-    } finally {
-      try {
-        await page?.close()
-      } catch { }
-    }
-  }
 }
+
+export function createBlacklistRenderer(ctx: Context, log?: LogFn) {
+    return async function renderBlacklist(
+        title: string,
+        items: BlacklistItem[]
+    ): Promise<Buffer | null> {
+        const html = buildBlacklistHtml(title, items)
+        return renderHtml(
+            ctx,
+            html,
+            {
+                width: 600,
+                height: 100 + items.length * 120,
+                selector: '#list-root'
+            },
+            log
+        )
+    }
+}
+
+export type BlacklistRenderer = ReturnType<typeof createBlacklistRenderer>

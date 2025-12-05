@@ -1,5 +1,10 @@
+/**
+ * 黑名单渲染器
+ * 渲染黑名单列表图片
+ */
 import type { Context } from 'koishi';
-interface BlacklistItem {
+import type { LogFn } from '../types';
+export interface BlacklistItem {
     index: number;
     nickname: string;
     userId: string;
@@ -9,5 +14,5 @@ interface BlacklistItem {
     isTemp?: boolean;
     penalty?: number;
 }
-export declare function createRenderBlacklist(ctx: Context): (title: string, items: BlacklistItem[]) => Promise<Buffer | null>;
-export {};
+export declare function createBlacklistRenderer(ctx: Context, log?: LogFn): (title: string, items: BlacklistItem[]) => Promise<Buffer | null>;
+export type BlacklistRenderer = ReturnType<typeof createBlacklistRenderer>;
