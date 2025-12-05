@@ -13,7 +13,7 @@ export const RelationshipSchema = Schema.object({
             relation: Schema.string().default('').description('关系'),
             note: Schema.string().default('').description('备注')
         })
-    ).role('table').default([]).description('特殊关系配置（建议仅在第一次使用或清空好感数据库时配置，后续增改可能导致bug）'),
+    ).role('table').default([]).description('特殊关系配置（删除后需手动清理数据库中对应用户的关系字段）'),
     relationshipAffinityLevels: Schema.array(
         Schema.object({
             min: Schema.number().default(0).description('好感度下限'),
@@ -22,10 +22,11 @@ export const RelationshipSchema = Schema.object({
             note: Schema.string().default('').description('备注')
         })
     ).role('table').default([
-        { min: 0, max: 29, relation: '陌生人', note: '保持距离' },
-        { min: 30, max: 59, relation: '友好', note: '一般关系' },
-        { min: 60, max: 89, relation: '亲近', note: '值得信赖' },
-        { min: 90, max: 100, relation: '挚友', note: '非常重要' }
+        { min: -9999, max: 0, relation: '厌恶', note: '会极其敷衍、冷淡，甚至可能选择无视。目的是尽快结束对话。' },
+        { min: 1, max: 50, relation: '陌生', note: '仅为点头之交，缺乏深入了解，互动局限于礼貌层面。' },
+        { min: 51, max: 120, relation: '熟悉', note: '彼此认识，可以进行日常交流，开始使用一些轻松的语气词，展现出更多个性。' },
+        { min: 121, max: 180, relation: '友好', note: '互有好感，愿意主动分享自己的经历和感受，是值得信赖的朋友。' },
+        { min: 181, max: 9999, relation: '亲密', note: '关系非常亲密，会毫无顾忌地开玩笑、吐槽，也会自然地撒娇和分享自己的小情绪。' }
     ]).description('好感度区间关系'),
     registerRelationshipTool: Schema.boolean().default(false).description('注册 ChatLuna 工具：调整关系'),
     relationshipToolName: Schema.string().default('adjust_relationship').description('ChatLuna 工具名称：调整关系')

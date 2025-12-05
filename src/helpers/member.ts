@@ -318,10 +318,38 @@ export async function fetchMember(
         if (!guildId) return null
 
         const bot = session.bot
-        if (!bot || typeof bot.getGuildMember !== 'function') return null
+        if (!bot) return null
 
-        const member = await bot.getGuildMember(guildId, userId)
-        return member as MemberInfo | null
+        if (session.platform === 'onebot') {
+            const internal = (bot as unknown as { internal?: Record<string, unknown> })?.internal
+            if (internal) {
+                if (typeof internal.getGroupMemberInfo === 'function') {
+                    const result = await (internal.getGroupMemberInfo as (
+                        groupId: string | number,
+                        userId: string | number,
+                        noCache?: boolean
+                    ) => Promise<MemberInfo>)(Number(guildId), Number(userId), false)
+                    if (result) return result
+                } else if (typeof internal._request === 'function') {
+                    const result = await (internal._request as (
+                        action: string,
+                        params: unknown
+                    ) => Promise<MemberInfo>)('get_group_member_info', {
+                        group_id: Number(guildId),
+                        user_id: Number(userId),
+                        no_cache: false
+                    })
+                    if (result) return result
+                }
+            }
+        }
+
+        if (typeof bot.getGuildMember === 'function') {
+            const member = await bot.getGuildMember(guildId, userId)
+            return member as MemberInfo | null
+        }
+
+        return null
     } catch {
         return null
     }
@@ -465,22 +493,50 @@ export async function fetchGroupList(
     try {
         if (session.platform !== 'onebot') return null
 
-        const internal = (session.bot as unknown as { internal?: Record<string, unknown> })
-            ?.internal
-        if (!internal) return null
+        const bot = session.bot
+        if (!bot) return null
 
-        let result: GroupListItem[] | null = null
+        const internal = (bot as unknown as { internal?: Record<string, unknown> })?.internal
 
-        if (typeof internal._request === 'function') {
-            const response = await (
-                internal._request as (action: string, params: unknown) => Promise<unknown>
-            )('get_group_list', {})
-            result = response as GroupListItem[]
-        } else if (typeof internal.getGroupList === 'function') {
-            result = (await (internal.getGroupList as () => Promise<unknown>)()) as GroupListItem[]
+        const extractList = (response: unknown): GroupListItem[] | null => {
+            if (Array.isArray(response) && response.length > 0) return response
+            if (response && typeof response === 'object') {
+                const obj = response as Record<string, unknown>
+                if (Array.isArray(obj.data) && obj.data.length > 0) return obj.data
+                if (Array.isArray(obj.result) && obj.result.length > 0) return obj.result
+            }
+            return null
         }
 
-        return result
+        if (internal) {
+            if (typeof internal.getGroupList === 'function') {
+                const response = await (internal.getGroupList as (noCache?: boolean) => Promise<unknown>)(false)
+                const list = extractList(response)
+                if (list) return list
+            }
+
+            if (typeof internal._request === 'function') {
+                const response = await (internal._request as (
+                    action: string,
+                    params: unknown
+                ) => Promise<unknown>)('get_group_list', { no_cache: false })
+                const list = extractList(response)
+                if (list) return list
+            }
+        }
+
+        if (typeof bot.getGuildList === 'function') {
+            const response = await bot.getGuildList()
+            const data = extractList(response) || (response as { data?: unknown[] })?.data
+            if (Array.isArray(data) && data.length > 0) {
+                return data.map((guild) => ({
+                    group_id: (guild as { id?: string }).id,
+                    group_name: (guild as { name?: string }).name
+                }))
+            }
+        }
+
+        return null
     } catch (error) {
         log?.('debug', '获取群列表失败', error)
         return null

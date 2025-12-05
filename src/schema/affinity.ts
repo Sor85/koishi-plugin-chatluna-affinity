@@ -9,15 +9,15 @@ import { BASE_AFFINITY_DEFAULTS, DEFAULT_ANALYSIS_PROMPT } from '../constants'
 const AffinityDynamicsSchema = Schema.object({
     shortTerm: Schema.object({
         promoteThreshold: Schema.number().default(15).description('短期好感高于该值时提升长期好感'),
-        demoteThreshold: Schema.number().default(-15).description('短期好感低于该值时降低长期好感'),
+        demoteThreshold: Schema.number().default(-10).description('短期好感低于该值时降低长期好感'),
         longTermPromoteStep: Schema.number().default(3).min(1).description('每次增加长期好感的幅度'),
-        longTermDemoteStep: Schema.number().default(3).min(1).description('每次减少长期好感的幅度')
+        longTermDemoteStep: Schema.number().default(5).min(1).description('每次减少长期好感的幅度')
     })
         .default({
             promoteThreshold: 15,
-            demoteThreshold: -15,
+            demoteThreshold: -10,
             longTermPromoteStep: 3,
-            longTermDemoteStep: 3
+            longTermDemoteStep: 5
         })
         .description('短期/长期好感设置')
         .collapse(),
@@ -76,7 +76,7 @@ export const AffinitySchema = Schema.object({
         .description('好感度基础数值')
         .collapse(),
     affinityDynamics: AffinityDynamicsSchema.default({
-        shortTerm: { promoteThreshold: 15, demoteThreshold: -15, longTermPromoteStep: 3, longTermDemoteStep: 3 },
+        shortTerm: { promoteThreshold: 15, demoteThreshold: -10, longTermPromoteStep: 3, longTermDemoteStep: 5 },
         actionWindow: { windowHours: 24, increaseBonus: 2, decreaseBonus: 2, bonusChatThreshold: 10, allowBonusOverflow: false, maxEntries: 80 },
         coefficient: { base: 1, maxDrop: 0.3, maxBoost: 0.3, decayPerDay: 0.05, boostPerDay: 0.05 }
     }).collapse(),

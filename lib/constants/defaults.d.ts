@@ -63,8 +63,8 @@ export declare const FETCH_CONSTANTS: {
     readonly MAX_RANK_FETCH: 200;
 };
 export declare const BASE_AFFINITY_DEFAULTS: {
-    readonly initialRandomMin: 20;
-    readonly initialRandomMax: 40;
+    readonly initialRandomMin: 10;
+    readonly initialRandomMax: 30;
     readonly maxIncreasePerMessage: 5;
-    readonly maxDecreasePerMessage: 5;
+    readonly maxDecreasePerMessage: 10;
 };

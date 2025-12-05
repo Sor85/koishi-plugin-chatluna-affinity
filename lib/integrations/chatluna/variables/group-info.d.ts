@@ -7,22 +7,10 @@ import type { Config, LogFn } from '../../../types';
 interface ProviderConfigurable {
     session?: Session;
 }
-interface GroupListItem {
-    group_id?: string;
-    groupId?: string;
-    id?: string;
-    group_name?: string;
-    groupName?: string;
-    name?: string;
-    member_count?: number;
-    memberCount?: number;
-    create_time?: number | string;
-    createTime?: number | string;
-}
 export interface GroupInfoProviderDeps {
     config: Config;
     log?: LogFn;
-    fetchGroupList: (session: Session) => Promise<GroupListItem[] | null>;
+    fetchGroupList: (session: Session) => Promise<unknown[] | null>;
 }
 export declare function createGroupInfoProvider(deps: GroupInfoProviderDeps): (_args: unknown, _variables: unknown, configurable?: ProviderConfigurable) => Promise<string>;
 export type GroupInfoProvider = ReturnType<typeof createGroupInfoProvider>;

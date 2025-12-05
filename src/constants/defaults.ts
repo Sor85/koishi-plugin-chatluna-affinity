@@ -73,8 +73,8 @@ export const FETCH_CONSTANTS = {
 } as const
 
 export const BASE_AFFINITY_DEFAULTS = {
-    initialRandomMin: 20,
-    initialRandomMax: 40,
+    initialRandomMin: 10,
+    initialRandomMax: 30,
     maxIncreasePerMessage: 5,
-    maxDecreasePerMessage: 5
+    maxDecreasePerMessage: 10
 } as const

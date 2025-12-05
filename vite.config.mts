@@ -18,7 +18,8 @@ export default defineConfig({
         globals: {
           vue: 'Vue',
           '@koishijs/client': 'client'
-        }
+        },
+        assetFileNames: 'style.[ext]'
       }
     },
     cssCodeSplit: false
