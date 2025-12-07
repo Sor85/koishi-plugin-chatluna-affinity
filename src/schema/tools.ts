@@ -45,5 +45,11 @@ export const OtherCommandsSchema = Schema.object({
 }).description('其他指令')
 
 export const OtherSettingsSchema = Schema.object({
-    debugLogging: Schema.boolean().default(false).description('输出调试日志')
+    debugLogging: Schema.boolean().default(false).description('输出调试日志'),
+    affinityGroups: Schema.array(
+        Schema.object({
+            groupName: Schema.string().required().description('分组名称'),
+            botIds: Schema.array(Schema.string()).default([]).description('组内 Bot 的 selfId 列表')
+        })
+    ).default([]).description('好感度共享分组（同组 Bot 共享好感度数据）')
 }).description('其他设置')

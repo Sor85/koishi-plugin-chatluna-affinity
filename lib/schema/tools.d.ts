@@ -65,6 +65,20 @@ export declare const OtherCommandsSchema: Schema<Schemastery.ObjectS<{
 }>>;
 export declare const OtherSettingsSchema: Schema<Schemastery.ObjectS<{
     debugLogging: Schema<boolean, boolean>;
+    affinityGroups: Schema<({
+        groupName?: string | null | undefined;
+        botIds?: string[] | null | undefined;
+    } & import("koishi").Dict)[], Schemastery.ObjectT<{
+        groupName: Schema<string, string>;
+        botIds: Schema<string[], string[]>;
+    }>[]>;
 }>, Schemastery.ObjectT<{
     debugLogging: Schema<boolean, boolean>;
+    affinityGroups: Schema<({
+        groupName?: string | null | undefined;
+        botIds?: string[] | null | undefined;
+    } & import("koishi").Dict)[], Schemastery.ObjectT<{
+        groupName: Schema<string, string>;
+        botIds: Schema<string[], string[]>;
+    }>[]>;
 }>>;

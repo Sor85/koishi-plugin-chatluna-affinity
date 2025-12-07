@@ -164,6 +164,10 @@ export declare const ConfigSchema: Schema<{
     inspectRenderAsImage?: boolean | null | undefined;
 } & {
     debugLogging?: boolean | null | undefined;
+    affinityGroups?: ({
+        groupName?: string | null | undefined;
+        botIds?: string[] | null | undefined;
+    } & import("koishi").Dict)[] | null | undefined;
 }, {
     affinityVariableName: string;
     contextAffinityOverview: Schemastery.ObjectT<{
@@ -332,5 +336,9 @@ export declare const ConfigSchema: Schema<{
     inspectRenderAsImage: boolean;
 } & {
     debugLogging: boolean;
+    affinityGroups: Schemastery.ObjectT<{
+        groupName: Schema<string, string>;
+        botIds: Schema<string[], string[]>;
+    }>[];
 }>;
 export { ConfigSchema as Config };

@@ -30,6 +30,16 @@ export interface AffinityStoreOptions {
 export function createAffinityStore(options: AffinityStoreOptions) {
     const { ctx, config, log } = options
 
+    const resolveGroupSelfId = (selfId: string): string => {
+        const groups = config.affinityGroups || []
+        for (const group of groups) {
+            if (group.botIds?.includes(selfId)) {
+                return group.botIds[0] || selfId
+            }
+        }
+        return selfId
+    }
+
     const resolveInitialMin = () =>
         Number.isFinite(config.initialRandomMin)
             ? config.initialRandomMin
@@ -171,7 +181,8 @@ export function createAffinityStore(options: AffinityStoreOptions) {
     }
 
     const load = async (selfId: string, userId: string): Promise<AffinityRecord | null> => {
-        const records = await ctx.database.get(MODEL_NAME, { selfId, userId })
+        const resolvedSelfId = resolveGroupSelfId(selfId)
+        const records = await ctx.database.get(MODEL_NAME, { selfId: resolvedSelfId, userId })
         return records[0] || null
     }
 
@@ -182,10 +193,11 @@ export function createAffinityStore(options: AffinityStoreOptions) {
         extra?: Partial<SaveExtra>
     ): Promise<AffinityRecord | null> => {
         const userId = seed.userId || seed.session?.userId
-        const selfId = seed.selfId || seed.session?.selfId
-        if (!selfId || !userId) return null
+        const rawSelfId = seed.selfId || seed.session?.selfId
+        if (!rawSelfId || !userId) return null
 
-        const existing = await load(selfId, userId)
+        const selfId = resolveGroupSelfId(rawSelfId)
+        const existing = await load(rawSelfId, userId)
 
         const sessionUserId = seed.session?.userId
         const isTargetingSelf = !sessionUserId || sessionUserId === userId

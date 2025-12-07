@@ -20,9 +20,19 @@ export function registerRankCommand(deps: CommandDependencies) {
         stripAtPrefix
     } = deps
 
-    ctx.command('affinity.rank [limit:number] [platform:string] [image]', '查看当前好感度排行', { authority: 1 })
+    const resolveGroupSelfId = (selfId: string): string => {
+        const groups = config.affinityGroups || []
+        for (const group of groups) {
+            if (group.botIds?.includes(selfId)) {
+                return group.botIds[0] || selfId
+            }
+        }
+        return selfId
+    }
+
+    ctx.command('affinity.rank [limit:number] [image]', '查看当前好感度排行', { authority: 1 })
         .alias('好感度排行')
-        .action(async ({ session }, limitArg, platformArg, imageArg) => {
+        .action(async ({ session }, limitArg, imageArg) => {
             const parsedLimit = Number(limitArg)
             const limit = Math.max(
                 1,
@@ -39,9 +49,7 @@ export function registerRankCommand(deps: CommandDependencies) {
                 return '当前环境未启用 puppeteer，已改为文本模式。'
 
             const conditions: Record<string, unknown> = {}
-            const platform = platformArg || session?.platform
-            if (platform) conditions.platform = platform
-            if (session?.selfId) conditions.selfId = session.selfId
+            if (session?.selfId) conditions.selfId = resolveGroupSelfId(session.selfId)
 
             type AffinityRow = {
                 userId: string

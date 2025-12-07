@@ -54,6 +54,10 @@ export interface ManualRelationship {
     relation: string;
     note?: string;
 }
+export interface AffinityGroup {
+    groupName: string;
+    botIds: string[];
+}
 export interface UserInfoConfig {
     enabled?: boolean;
     variableName: string;
@@ -145,4 +149,5 @@ export interface Config {
     otherVariables?: OtherVariablesConfig;
     groupListRenderAsImage?: boolean;
     inspectRenderAsImage?: boolean;
+    affinityGroups?: AffinityGroup[];
 }
