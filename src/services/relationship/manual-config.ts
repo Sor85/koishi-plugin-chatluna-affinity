@@ -46,7 +46,7 @@ export function createManualRelationshipManager(options: ManualConfigOptions) {
             const existing = records[0]
             if (existing) {
                 await ctx.database.upsert(MODEL_NAME, [
-                    { ...existing, relation: null } as AffinityRecord
+                    { ...existing, specialRelation: null } as AffinityRecord
                 ])
             }
         } catch (error) {
@@ -72,8 +72,8 @@ export function createManualRelationshipManager(options: ManualConfigOptions) {
 
         for (const record of records) {
             const configRelation = relationshipMap.get(record.userId)
-            if (configRelation !== undefined && record.relation !== configRelation) {
-                toUpdate.push({ ...record, relation: configRelation } as AffinityRecord)
+            if (configRelation !== undefined && record.specialRelation !== configRelation) {
+                toUpdate.push({ ...record, specialRelation: configRelation } as AffinityRecord)
             }
         }
 

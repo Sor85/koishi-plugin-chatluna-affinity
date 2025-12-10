@@ -189,7 +189,7 @@ export function createAffinityStore(options: AffinityStoreOptions) {
     const save = async (
         seed: SessionSeed,
         value: number,
-        relation = '',
+        specialRelation = '',
         extra?: Partial<SaveExtra>
     ): Promise<AffinityRecord | null> => {
         const userId = seed.userId || seed.session?.userId
@@ -273,7 +273,8 @@ export function createAffinityStore(options: AffinityStoreOptions) {
 
         const compositeAffinity = clampValue(Math.round(longTerm * coefficient))
 
-        const relationText: string | null = relation || existing?.relation || resolveRelationByAffinity(compositeAffinity) || null
+        const autoRelation: string | null = resolveRelationByAffinity(compositeAffinity) || null
+        const specialRelationText: string | null = specialRelation || existing?.specialRelation || null
 
         const row: Partial<AffinityRecord> = {
             selfId,
@@ -282,7 +283,8 @@ export function createAffinityStore(options: AffinityStoreOptions) {
             affinity: compositeAffinity,
             longTermAffinity: clampValue(longTerm),
             shortTermAffinity: Math.round(shortTerm),
-            relation: relationText
+            relation: autoRelation,
+            specialRelation: specialRelationText
         }
 
         if (extra?.chatCount !== undefined) row.chatCount = extra.chatCount

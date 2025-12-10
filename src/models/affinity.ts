@@ -23,6 +23,7 @@ export function extendAffinityModel(ctx: Context): void {
             nickname: { type: 'string', length: 255, nullable: true },
             affinity: { type: 'integer', initial: 0 },
             relation: { type: 'string', length: 64, nullable: true },
+            specialRelation: { type: 'string', length: 64, nullable: true },
             shortTermAffinity: { type: 'integer', nullable: true },
             longTermAffinity: { type: 'integer', nullable: true },
             chatCount: { type: 'integer', nullable: true },

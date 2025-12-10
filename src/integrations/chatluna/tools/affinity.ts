@@ -56,7 +56,7 @@ export function createAffinityTool(deps: ToolDependencies) {
             await store.save(
                 { platform, userId, selfId: session?.selfId, session: session || undefined, nickname },
                 value,
-                level?.relation ?? ''
+                ''
             )
             cache.set(platform, userId, value)
             if (level?.relation) {

@@ -9,6 +9,7 @@ export interface AffinityRecord {
     nickname: string | null
     affinity: number
     relation: string | null
+    specialRelation: string | null
     shortTermAffinity: number | null
     longTermAffinity: number | null
     chatCount: number | null

@@ -34,7 +34,7 @@ export function createRelationshipProvider(deps: RelationshipProviderDeps) {
         if (!selfId) return ''
 
         const record = await store.load(selfId, userId)
-        return record?.relation || ''
+        return record?.specialRelation || record?.relation || ''
     }
 }
 

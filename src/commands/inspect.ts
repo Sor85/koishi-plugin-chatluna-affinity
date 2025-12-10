@@ -83,7 +83,7 @@ export function registerInspectCommand(deps: CommandDependencies) {
                 }
             }
 
-            const displayRelation = record.relation || '——'
+            const displayRelation = record.specialRelation || record.relation || '——'
 
             const lines = [
                 `用户：${displayNickname} ${stripAtPrefix(userId)}`,

@@ -58,7 +58,7 @@ export function createContextAffinityProvider(deps: ContextAffinityProviderDeps)
                 const record = await store.load(session.selfId, userId)
                 if (!record) return null
                 const affinity = record.affinity ?? 0
-                const relation = record.relation || '未知'
+                const relation = record.specialRelation || record.relation || '未知'
                 const name = username || record?.nickname || userId
                 return `id:${userId} name:${name} affinity:${affinity} relationship:${relation}`
             })

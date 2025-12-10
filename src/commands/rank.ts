@@ -55,6 +55,7 @@ export function registerRankCommand(deps: CommandDependencies) {
                 userId: string
                 nickname: string | null
                 relation: string | null
+                specialRelation: string | null
                 affinity: number
             }
             let scopedRows: AffinityRow[] = []
@@ -116,7 +117,7 @@ export function registerRankCommand(deps: CommandDependencies) {
                     }
                     return {
                         name,
-                        relation: row.relation || '——',
+                        relation: row.specialRelation || row.relation || '——',
                         affinity: row.affinity,
                         userId: row.userId
                     }
