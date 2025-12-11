@@ -18,6 +18,7 @@ export {
     AffinityDynamicsConfig,
     RelationshipLevel,
     ManualRelationship,
+    AffinityGroup,
     UserInfoConfig,
     BotInfoConfig,
     GroupInfoConfig,

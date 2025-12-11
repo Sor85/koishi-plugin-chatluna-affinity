@@ -20,14 +20,23 @@ export function registerRankCommand(deps: CommandDependencies) {
         stripAtPrefix
     } = deps
 
-    const resolveGroupSelfId = (selfId: string): string => {
+    const findGroup = (selfId: string) => {
         const groups = config.affinityGroups || []
         for (const group of groups) {
             if (group.botIds?.includes(selfId)) {
-                return group.botIds[0] || selfId
+                return group
             }
         }
-        return selfId
+        return null
+    }
+
+    const matchesGroup = (recordSelfId: string, selfId: string): boolean => {
+        const group = findGroup(selfId)
+        if (!group) return recordSelfId === selfId
+        return (
+            group.botIds.includes(recordSelfId) ||
+            recordSelfId.startsWith(`${group.groupName},`)
+        )
     }
 
     ctx.command('affinity.rank [limit:number] [image]', '查看当前好感度排行', { authority: 1 })
@@ -48,8 +57,7 @@ export function registerRankCommand(deps: CommandDependencies) {
             if (shouldRenderImage && !puppeteer?.page)
                 return '当前环境未启用 puppeteer，已改为文本模式。'
 
-            const conditions: Record<string, unknown> = {}
-            if (session?.selfId) conditions.selfId = resolveGroupSelfId(session.selfId)
+            const selfId = session?.selfId || ''
 
             type AffinityRow = {
                 userId: string
@@ -73,11 +81,13 @@ export function registerRankCommand(deps: CommandDependencies) {
                 while (scopedRows.length < limit && hasMore) {
                     const batch = await ctx.database
                         .select(MODEL_NAME)
-                        .where(conditions)
                         .orderBy('affinity', 'desc')
                         .limit(batchSize)
                         .offset(offset)
                         .execute()
+                        .then((rows) =>
+                            selfId ? rows.filter((r) => matchesGroup(r.selfId, selfId)) : rows
+                        )
                     if (!batch.length) {
                         hasMore = false
                         break
@@ -98,10 +108,14 @@ export function registerRankCommand(deps: CommandDependencies) {
             } else {
                 const rows = await ctx.database
                     .select(MODEL_NAME)
-                    .where(conditions)
                     .orderBy('affinity', 'desc')
-                    .limit(limit)
                     .execute()
+                    .then((all) =>
+                        (selfId ? all.filter((r) => matchesGroup(r.selfId, selfId)) : all).slice(
+                            0,
+                            limit
+                        )
+                    )
                 if (!rows.length) return '当前暂无好感度记录。'
                 scopedRows = rows as AffinityRow[]
             }

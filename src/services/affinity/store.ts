@@ -8,6 +8,7 @@ import type {
     Config,
     AffinityRecord,
     AffinityState,
+    AffinityGroup,
     ActionStats,
     CoefficientState,
     CombinedState,
@@ -18,7 +19,6 @@ import type {
     LogFn
 } from '../../types'
 import { clamp } from '../../utils'
-import { formatBeijingTimestamp } from '../../utils'
 import { MODEL_NAME } from '../../models'
 
 export interface AffinityStoreOptions {
@@ -30,14 +30,22 @@ export interface AffinityStoreOptions {
 export function createAffinityStore(options: AffinityStoreOptions) {
     const { ctx, config, log } = options
 
-    const resolveGroupSelfId = (selfId: string): string => {
+    const findGroup = (selfId: string): AffinityGroup | null => {
         const groups = config.affinityGroups || []
         for (const group of groups) {
             if (group.botIds?.includes(selfId)) {
-                return group.botIds[0] || selfId
+                return group
             }
         }
-        return selfId
+        return null
+    }
+
+    const buildStorageKey = (selfId: string, group: AffinityGroup | null): string => {
+        return group ? `${group.groupName},${selfId}` : selfId
+    }
+
+    const isGroupKey = (key: string, groupName: string): boolean => {
+        return key.startsWith(`${groupName},`)
     }
 
     const resolveInitialMin = () =>
@@ -181,8 +189,22 @@ export function createAffinityStore(options: AffinityStoreOptions) {
     }
 
     const load = async (selfId: string, userId: string): Promise<AffinityRecord | null> => {
-        const resolvedSelfId = resolveGroupSelfId(selfId)
-        const records = await ctx.database.get(MODEL_NAME, { selfId: resolvedSelfId, userId })
+        const group = findGroup(selfId)
+
+        if (group) {
+            const allRecords = await ctx.database.get(MODEL_NAME, { userId })
+            const candidates = allRecords.filter(
+                (r) =>
+                    group.botIds.includes(r.selfId) ||
+                    isGroupKey(r.selfId, group.groupName)
+            )
+            if (candidates.length === 0) return null
+            return candidates.reduce((max, r) =>
+                r.affinity > max.affinity ? r : max
+            )
+        }
+
+        const records = await ctx.database.get(MODEL_NAME, { selfId, userId })
         return records[0] || null
     }
 
@@ -196,7 +218,8 @@ export function createAffinityStore(options: AffinityStoreOptions) {
         const rawSelfId = seed.selfId || seed.session?.selfId
         if (!rawSelfId || !userId) return null
 
-        const selfId = resolveGroupSelfId(rawSelfId)
+        const group = findGroup(rawSelfId)
+        const selfId = buildStorageKey(rawSelfId, group)
         const existing = await load(rawSelfId, userId)
 
         const sessionUserId = seed.session?.userId
