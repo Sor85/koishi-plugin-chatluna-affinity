@@ -45,7 +45,7 @@ export function registerAdjustCommand(deps: CommandDependencies) {
             await store.save(
                 { selfId, userId, nickname },
                 clampedAffinity,
-                existing?.relation || '',
+                existing?.specialRelation || '',
                 { longTermAffinity: clampedAffinity, shortTermAffinity: existing?.shortTermAffinity ?? 0 }
             )
 

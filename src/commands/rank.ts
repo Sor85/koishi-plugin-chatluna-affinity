@@ -85,9 +85,17 @@ export function registerRankCommand(deps: CommandDependencies) {
                         .limit(batchSize)
                         .offset(offset)
                         .execute()
-                        .then((rows) =>
-                            selfId ? rows.filter((r) => matchesGroup(r.selfId, selfId)) : rows
-                        )
+                        .then((rows) => {
+                            const filtered = selfId
+                                ? rows.filter((r) => matchesGroup(r.selfId, selfId))
+                                : rows
+                            const seen = new Set<string>()
+                            return filtered.filter((r) => {
+                                if (seen.has(r.userId)) return false
+                                seen.add(r.userId)
+                                return true
+                            })
+                        })
                     if (!batch.length) {
                         hasMore = false
                         break
@@ -110,12 +118,19 @@ export function registerRankCommand(deps: CommandDependencies) {
                     .select(MODEL_NAME)
                     .orderBy('affinity', 'desc')
                     .execute()
-                    .then((all) =>
-                        (selfId ? all.filter((r) => matchesGroup(r.selfId, selfId)) : all).slice(
-                            0,
-                            limit
-                        )
-                    )
+                    .then((all) => {
+                        const filtered = selfId
+                            ? all.filter((r) => matchesGroup(r.selfId, selfId))
+                            : all
+                        const seen = new Set<string>()
+                        return filtered
+                            .filter((r) => {
+                                if (seen.has(r.userId)) return false
+                                seen.add(r.userId)
+                                return true
+                            })
+                            .slice(0, limit)
+                    })
                 if (!rows.length) return '当前暂无好感度记录。'
                 scopedRows = rows as AffinityRow[]
             }
