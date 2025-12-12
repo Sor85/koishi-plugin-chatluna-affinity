@@ -17,7 +17,7 @@ export const ScheduleSchema = Schema.object({
         prompt: Schema.string()
             .role('textarea')
             .default(DEFAULT_SCHEDULE_PROMPT)
-            .description('日程生成提示词模板（可使用 {date}、{weekday}、{persona}、{weather} 等占位符）'),
+            .description('日程生成提示词'),
         renderAsImage: Schema.boolean().default(false).description('将今日日程渲染为图片'),
         startDelay: Schema.number().default(3000).description('启动延迟（毫秒），等待 ChatLuna 加载完成'),
         registerTool: Schema.boolean().default(true).description('注册 ChatLuna 工具：获取今日日程'),

@@ -15,6 +15,7 @@ export const ANALYSIS_PROMPT = `你是好感度管家，评估本次互动的增
 
 用于参考的背景信息:
 人设：{persona}
+当前关系: {currentRelationship}
 当前好感度: {currentAffinity}（范围 {minAffinity} ~ {maxAffinity}）
 上下文:
 {historyText}

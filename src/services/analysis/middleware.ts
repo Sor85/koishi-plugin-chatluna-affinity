@@ -270,8 +270,11 @@ export function createAnalysisMiddleware(ctx: Context, config: Config, deps: Ana
 
             const nextCoefficientState = computeCoefficientValue(coefficientRules, streak, result.coefficientState?.lastInteractionAt, now, todayIncreaseCount, todayDecreaseCount)
 
+            const currentRelationship = manual?.relation || store.resolveLevelByAffinity(oldAffinity)?.relation || '未知'
+
             const prompt = renderTemplate(config.analysisPrompt, {
                 currentAffinity: oldAffinity,
+                currentRelationship,
                 minAffinity,
                 maxAffinity,
                 maxIncreasePerMessage: maxIncreaseLimit,

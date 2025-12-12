@@ -92,7 +92,7 @@ export const AffinitySchema = Schema.object({
     analysisPrompt: Schema.string()
         .role('textarea')
         .default(DEFAULT_ANALYSIS_PROMPT)
-        .description('好感度分析主提示词'),
+        .description('好感度分析提示词'),
     personaSource: Schema.union([
         Schema.const('none').description('不注入预设'),
         Schema.const('chatluna').description('使用 ChatLuna 主插件预设'),

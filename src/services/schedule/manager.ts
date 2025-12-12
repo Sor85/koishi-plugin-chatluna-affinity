@@ -181,8 +181,14 @@ export function createScheduleManager(
         chatluna.promptRenderer.registerFunctionProvider(
             currentVariableName,
             async (_args: unknown, _vars: unknown, configurable?: { session?: Session }) => {
-                const summary = await getCurrentSummary(configurable?.session)
-                return summary || ''
+                const payload = await getSchedule(configurable?.session)
+                if (!payload || !payload.entries.length) return ''
+                const currentMinutes = getCurrentMinutes(timezone)
+                const current = payload.entries.find(
+                    e => currentMinutes >= e.startMinutes && currentMinutes < e.endMinutes
+                )
+                if (!current) return payload.description || ''
+                return `${current.start}-${current.end}：${current.summary}`
             }
         )
 
@@ -204,7 +210,8 @@ export function createScheduleManager(
                 const outfit = payload.outfits.find(
                     (o) => currentMinutes >= o.startMinutes && currentMinutes < o.endMinutes
                 )
-                return outfit?.description || ''
+                if (!outfit) return ''
+                return outfit.description
             }
         )
     }

@@ -115,7 +115,7 @@ export function apply(ctx: Context, config: Config): void {
 
     const log = createLogger(ctx, config)
 
-    log('warn', '⚠️ 升级提示：0.2.1-alpha.10 版本后数据库结构已重构。若出现数据库相关错误，请执行 affinity.clearall 命令清除数据后重试。')
+    log('warn', '⚠️ 升级提示：0.2.1-alpha.10 版本后数据库结构已重构，若出现数据库相关错误，请执行 affinity.clearall 命令清除数据后重试。好感度分析提示词与日程生成提示词已更新，若您自定义过提示词，请将其恢复默认以应用最新版本。')
     const cache = createAffinityCache()
     const store = createAffinityStore({ ctx, config, log })
     const history = createMessageHistory({ ctx, config, log })
