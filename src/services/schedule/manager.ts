@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { h } from 'koishi'
 import { StructuredTool } from '@langchain/core/tools'
 import type { Context, Session } from 'koishi'
-import type { Config, Schedule, ScheduleEntry, ChatLunaPlugin, LogFn, ScheduleConfig, ScheduleManager } from '../../types'
+import type { Config, Schedule, ScheduleEntry, OutfitEntry, ChatLunaPlugin, LogFn, ScheduleConfig, ScheduleManager } from '../../types'
 import { createScheduleCache } from './cache'
 import { createScheduleGenerator } from './generator'
 import { formatDateForDisplay, getCurrentMinutes } from './time-utils'
@@ -16,7 +16,8 @@ export interface ScheduleManagerDeps {
     getModel: () => { invoke?: (prompt: string) => Promise<{ content?: unknown }> } | null
     getMessageContent: (content: unknown) => string
     resolvePersonaPreset: (session?: Session) => string
-    renderSchedule: (data: { title: string; description: string; entries: ScheduleEntry[]; date: string }) => Promise<Buffer | null>
+    getWeatherText: () => Promise<string>
+    renderSchedule: (data: { title: string; description: string; entries: ScheduleEntry[]; outfits?: OutfitEntry[]; date: string }) => Promise<Buffer | null>
     log: LogFn
 }
 
@@ -25,7 +26,7 @@ export function createScheduleManager(
     config: Config,
     deps: ScheduleManagerDeps
 ): ScheduleManager {
-    const { getModel, getMessageContent, resolvePersonaPreset, renderSchedule, log } = deps
+    const { getModel, getMessageContent, resolvePersonaPreset, getWeatherText, renderSchedule, log } = deps
     const scheduleConfig: ScheduleConfig = config.schedule || {}
     const enabled = scheduleConfig.enabled !== false
     const timezone = scheduleConfig.timezone || 'Asia/Shanghai'
@@ -37,6 +38,7 @@ export function createScheduleManager(
         getModel,
         getMessageContent,
         resolvePersonaPreset: () => resolvePersonaPreset(),
+        getWeatherText,
         log
     })
 
@@ -145,6 +147,7 @@ export function createScheduleManager(
                 title: schedule.title || scheduleConfig.title || '今日日程',
                 description: schedule.description || '',
                 entries: schedule.entries,
+                outfits: schedule.outfits,
                 date: schedule.date
             })
         } catch (error) {
@@ -158,6 +161,9 @@ export function createScheduleManager(
 
         const variableName = scheduleConfig.variableName || 'schedule'
         const currentVariableName = scheduleConfig.currentVariableName || 'currentSchedule'
+        const outfitVariableName = scheduleConfig.outfitVariableName || 'outfit'
+        const currentOutfitVariableName = scheduleConfig.currentOutfitVariableName || 'currentOutfit'
+        const timezone = scheduleConfig.timezone || 'Asia/Shanghai'
 
         const chatluna = (ctx as unknown as {
             chatluna?: { promptRenderer?: { registerFunctionProvider?: Function } }
@@ -177,6 +183,28 @@ export function createScheduleManager(
             async (_args: unknown, _vars: unknown, configurable?: { session?: Session }) => {
                 const summary = await getCurrentSummary(configurable?.session)
                 return summary || ''
+            }
+        )
+
+        chatluna.promptRenderer.registerFunctionProvider(
+            outfitVariableName,
+            async (_args: unknown, _vars: unknown, configurable?: { session?: Session }) => {
+                const payload = await getSchedule(configurable?.session)
+                if (!payload?.outfits?.length) return ''
+                return payload.outfits.map((o) => `${o.start}-${o.end}：${o.description}`).join('\n')
+            }
+        )
+
+        chatluna.promptRenderer.registerFunctionProvider(
+            currentOutfitVariableName,
+            async (_args: unknown, _vars: unknown, configurable?: { session?: Session }) => {
+                const payload = await getSchedule(configurable?.session)
+                if (!payload?.outfits?.length) return ''
+                const currentMinutes = getCurrentMinutes(timezone)
+                const outfit = payload.outfits.find(
+                    (o) => currentMinutes >= o.startMinutes && currentMinutes < o.endMinutes
+                )
+                return outfit?.description || ''
             }
         )
     }
@@ -234,10 +262,12 @@ export function createScheduleManager(
             .alias('刷新日程')
             .alias('重生日程')
             .action(async ({ session }) => {
+                log('info', '收到日程刷新请求，开始重新生成日程...')
                 const regenerated = await regenerateSchedule(session as Session | undefined)
                 if (regenerated) {
                     return '已重新生成今日日程。'
                 }
+                log('warn', '日程刷新失败，将启动重试机制')
                 startRetryInterval()
                 return '重新生成失败，将继续每10分钟尝试一次。'
             })

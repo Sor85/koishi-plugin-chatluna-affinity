@@ -13,12 +13,21 @@ export interface ScheduleEntry {
     summary: string
 }
 
+export interface OutfitEntry {
+    start: string
+    end: string
+    startMinutes: number
+    endMinutes: number
+    description: string
+}
+
 export interface Schedule {
     source: string
     date: string
     title: string
     description: string
     entries: ScheduleEntry[]
+    outfits: OutfitEntry[]
     text: string
 }
 

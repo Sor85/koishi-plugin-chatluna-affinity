@@ -11,11 +11,13 @@ export const ScheduleSchema = Schema.object({
         enabled: Schema.boolean().default(true).description('是否启用日程功能'),
         variableName: Schema.string().default('schedule').description('今日日程变量名称'),
         currentVariableName: Schema.string().default('currentSchedule').description('当前日程变量名称'),
+        outfitVariableName: Schema.string().default('outfit').description('今日穿搭变量名称'),
+        currentOutfitVariableName: Schema.string().default('currentOutfit').description('当前穿搭变量名称'),
         timezone: Schema.string().default('Asia/Shanghai').description('用于日程生成的时区'),
         prompt: Schema.string()
             .role('textarea')
             .default(DEFAULT_SCHEDULE_PROMPT)
-            .description('日程生成提示词模板（可使用 {date}、{weekday}、{persona} 等占位符）'),
+            .description('日程生成提示词模板（可使用 {date}、{weekday}、{persona}、{weather} 等占位符）'),
         renderAsImage: Schema.boolean().default(false).description('将今日日程渲染为图片'),
         startDelay: Schema.number().default(3000).description('启动延迟（毫秒），等待 ChatLuna 加载完成'),
         registerTool: Schema.boolean().default(true).description('注册 ChatLuna 工具：获取今日日程'),
@@ -25,6 +27,8 @@ export const ScheduleSchema = Schema.object({
             enabled: true,
             variableName: 'schedule',
             currentVariableName: 'currentSchedule',
+            outfitVariableName: 'outfit',
+            currentOutfitVariableName: 'currentOutfit',
             timezone: 'Asia/Shanghai',
             prompt: DEFAULT_SCHEDULE_PROMPT,
             renderAsImage: false,

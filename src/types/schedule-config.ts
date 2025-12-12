@@ -7,6 +7,8 @@ export interface ScheduleConfig {
     enabled: boolean
     variableName: string
     currentVariableName: string
+    outfitVariableName: string
+    currentOutfitVariableName: string
     timezone: string
     registerTool: boolean
     renderAsImage: boolean

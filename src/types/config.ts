@@ -5,8 +5,9 @@
 
 import type { BlacklistEntry, TemporaryBlacklistEntry, ShortTermBlacklistConfig } from './blacklist'
 import type { ScheduleConfig } from './schedule-config'
+import type { WeatherConfig } from './weather'
 
-export type { ScheduleConfig }
+export type { ScheduleConfig, WeatherConfig }
 
 export interface BaseAffinityConfig {
     initialRandomMin: number
@@ -163,6 +164,7 @@ export interface Config {
     blacklistDefaultLimit: number
     blacklistRenderAsImage: boolean
     schedule: ScheduleConfig
+    weather: WeatherConfig
     panSouTool: PanSouToolConfig
     otherVariables?: OtherVariablesConfig
     groupListRenderAsImage?: boolean

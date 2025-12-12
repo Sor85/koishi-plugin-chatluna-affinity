@@ -3,7 +3,7 @@
  * 提供基于 LLM 的日程生成功能
  */
 
-import type { Schedule, ScheduleEntry, ScheduleConfig, LogFn } from '../../types'
+import type { Schedule, ScheduleEntry, OutfitEntry, ScheduleConfig, LogFn } from '../../types'
 import {
     normalizeTime,
     formatDateForDisplay,
@@ -21,11 +21,12 @@ export interface ScheduleGeneratorOptions {
     getModel: () => { invoke?: (prompt: string) => Promise<{ content?: unknown }> } | null
     getMessageContent: (content: unknown) => string
     resolvePersonaPreset: () => string
+    getWeatherText: () => Promise<string>
     log: LogFn
 }
 
 export function createScheduleGenerator(options: ScheduleGeneratorOptions) {
-    const { scheduleConfig, getModel, getMessageContent, resolvePersonaPreset, log } = options
+    const { scheduleConfig, getModel, getMessageContent, resolvePersonaPreset, getWeatherText, log } = options
     const timezone = scheduleConfig.timezone || 'Asia/Shanghai'
 
     const pickField = (source: Record<string, unknown>, fields: string[]): string => {
@@ -37,6 +38,33 @@ export function createScheduleGenerator(options: ScheduleGeneratorOptions) {
             if (text) return text
         }
         return ''
+    }
+
+    const normalizeOutfits = (items: unknown[]): OutfitEntry[] => {
+        if (!Array.isArray(items) || !items.length) return []
+        const outfits: OutfitEntry[] = []
+
+        for (const item of items) {
+            const record = item as Record<string, unknown>
+            const start = normalizeTime(pickField(record, ['start', 'from', 'begin', 'startTime']))
+            const end = normalizeTime(pickField(record, ['end', 'to', 'finish', 'endTime']))
+            const description = pickField(record, ['description', 'outfit', 'clothes', 'detail', '穿搭'])
+
+            if (start && description) {
+                const endMinutes = end ? end.minutes : Math.min(1440, start.minutes + 360)
+                const safeEnd = endMinutes <= start.minutes ? Math.min(1440, start.minutes + 180) : Math.min(1440, endMinutes)
+                outfits.push({
+                    start: start.label,
+                    end: pad(Math.floor(safeEnd / 60)) + ':' + pad(safeEnd % 60),
+                    startMinutes: start.minutes,
+                    endMinutes: safeEnd,
+                    description
+                })
+            }
+        }
+
+        outfits.sort((a, b) => a.startMinutes - b.startMinutes)
+        return outfits
     }
 
     const normalizeEntries = (
@@ -104,11 +132,14 @@ export function createScheduleGenerator(options: ScheduleGeneratorOptions) {
                 title?: string
                 description?: string
                 entries?: unknown[]
+                outfits?: unknown[]
             }
             const now = new Date()
             const { dateStr } = formatDateForDisplay(now, timezone)
             const entries = normalizeEntries(data.entries || [], dateStr, personaTag)
             if (!entries) return null
+
+            const outfits = normalizeOutfits(data.outfits || [])
 
             const schedule: Schedule = {
                 source: 'model',
@@ -116,6 +147,7 @@ export function createScheduleGenerator(options: ScheduleGeneratorOptions) {
                 title: (data.title && String(data.title).trim()) || '📅 今日日程',
                 description: typeof data.description === 'string' ? data.description.trim() : '',
                 entries,
+                outfits,
                 text: ''
             }
             schedule.text = formatScheduleText(schedule)
@@ -138,11 +170,14 @@ export function createScheduleGenerator(options: ScheduleGeneratorOptions) {
         const personaText = resolvePersonaPreset() || '（暂无额外设定，可按温和友善的年轻人）'
         const personaTag = derivePersonaTag(personaText)
 
+        const weatherText = await getWeatherText()
+
         const prompt = applyPromptTemplate(scheduleConfig.prompt || '', {
             date: dateStr,
             weekday,
             persona: personaText,
-            personaPreset: personaText
+            personaPreset: personaText,
+            weather: weatherText || '（暂无天气信息）'
         })
 
         try {

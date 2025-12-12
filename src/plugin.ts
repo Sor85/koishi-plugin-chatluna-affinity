@@ -33,8 +33,10 @@ import {
     createUserInfoProvider,
     createBotInfoProvider,
     createGroupInfoProvider,
-    createRandomProvider
+    createRandomProvider,
+    createWeatherProvider
 } from './integrations/chatluna/variables'
+import { createWeatherApi } from './services/weather'
 import {
     createAffinityTool,
     createRelationshipTool,
@@ -158,10 +160,21 @@ export function apply(ctx: Context, config: Config): void {
     })
     const renders = createRenderService({ ctx, log })
 
+    const weatherConfig = config.weather || {
+        enabled: false,
+        variableName: 'weather',
+        apiToken: '',
+        searchType: 'city' as const,
+        cityName: '',
+        hourlyRefresh: false
+    }
+    const weatherApi = createWeatherApi({ ctx, weatherConfig, log })
+
     const scheduleManager = createScheduleManager(ctx, config, {
         getModel: () => (modelRef as { value?: unknown })?.value ?? modelRef ?? null,
         getMessageContent: getMessageContent as (content: unknown) => string,
         resolvePersonaPreset: () => resolvePersonaPreset(),
+        getWeatherText: () => weatherApi.getDailyWeather(),
         renderSchedule: renders.schedule,
         log
     })
@@ -421,6 +434,15 @@ export function apply(ctx: Context, config: Config): void {
             config.random?.variableName || config.otherVariables?.random?.variableName || 'random'
         ).trim()
         if (randomName) promptRenderer?.registerFunctionProvider?.(randomName, randomProvider)
+
+        if (weatherConfig.enabled && weatherConfig.apiToken) {
+            const weatherProvider = createWeatherProvider({ weatherApi })
+            const weatherVariableName = String(weatherConfig.variableName || 'weather').trim()
+            if (weatherVariableName) {
+                promptRenderer?.registerFunctionProvider?.(weatherVariableName, weatherProvider)
+                log('info', `天气变量已注册: ${weatherVariableName}`)
+            }
+        }
 
         const toolDeps = {
             config,

@@ -95,9 +95,17 @@ export function formatScheduleText(schedule: Schedule): string {
     lines.push(schedule.title || '📅 今日日程')
     if (schedule.description) lines.push('', schedule.description)
 
+    if (schedule.outfits?.length) {
+        lines.push('', '👗 今日穿搭')
+        for (const outfit of schedule.outfits) {
+            lines.push(`  ${outfit.start}-${outfit.end}：${outfit.description}`)
+        }
+    }
+
+    lines.push('', '📋 日程安排')
     for (const entry of schedule.entries) {
         const text = `  ⏰ ${entry.start}-${entry.end}  ${entry.summary}`
-        lines.push('', text)
+        lines.push(text)
     }
 
     return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim()

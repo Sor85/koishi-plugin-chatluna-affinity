@@ -9,6 +9,7 @@ export * from './blacklist'
 export * from './schedule'
 export * from './schedule-config'
 export * from './member'
+export * from './weather'
 export {
     BaseAffinityConfig,
     ContextAffinityOverviewConfig,
