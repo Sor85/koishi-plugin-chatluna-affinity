@@ -82,6 +82,7 @@ export const AffinitySchema = Schema.object({
     }).collapse(),
     model: Schema.dynamic('model').description('用于好感度分析的模型'),
     enableAnalysis: Schema.boolean().default(true).description('是否启用好感度分析'),
+    useRawModelResponse: Schema.boolean().default(false).description('使用 chatluna-character 的原始输出替代 {botReply}'),
     historyMessageCount: Schema.number().default(10).min(0).description('用于分析的最近消息条数'),
     rankRenderAsImage: Schema.boolean().default(false).description('将好感度排行渲染为图片'),
     rankDefaultLimit: Schema.number().default(10).min(1).max(50).description('好感度排行默认展示人数'),

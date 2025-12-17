@@ -127,6 +127,7 @@ export interface Config {
     maxDecreasePerMessage: number
     affinityDynamics: AffinityDynamicsConfig
     enableAnalysis: boolean
+    useRawModelResponse: boolean
     enableAutoBlacklist: boolean
     blacklistThreshold: number
     blacklistLogInterception: boolean

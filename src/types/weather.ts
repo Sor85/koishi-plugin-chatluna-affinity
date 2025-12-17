@@ -95,4 +95,6 @@ export interface WeatherConfig {
     searchType: 'city' | 'ip'
     cityName: string
     hourlyRefresh: boolean
+    registerTool?: boolean
+    toolName?: string
 }

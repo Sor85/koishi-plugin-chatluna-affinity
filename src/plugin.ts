@@ -40,7 +40,8 @@ import { createWeatherApi } from './services/weather'
 import {
     createAffinityTool,
     createRelationshipTool,
-    createBlacklistTool
+    createBlacklistTool,
+    createWeatherTool
 } from './integrations/chatluna/tools'
 import { createPokeTool, createSetProfileTool, createDeleteMessageTool } from './integrations/onebot/tools'
 import {
@@ -166,7 +167,9 @@ export function apply(ctx: Context, config: Config): void {
         apiToken: '',
         searchType: 'city' as const,
         cityName: '',
-        hourlyRefresh: false
+        hourlyRefresh: false,
+        registerTool: false,
+        toolName: 'get_weather'
     }
     const weatherApi = createWeatherApi({ ctx, weatherConfig, log })
 
@@ -287,9 +290,92 @@ export function apply(ctx: Context, config: Config): void {
     })
     ctx.middleware(analysisSystem.middleware as Parameters<typeof ctx.middleware>[0])
 
+    let rawModelResponseGuildId: string | null = null
+    const rawModelResponseMap = new Map<string, string>()
+    let rawInterceptorRetryHandle: (() => void) | null = null
+
+    const initRawModelInterceptor = (): boolean => {
+        const characterService = (
+            ctx as unknown as {
+                chatluna_character?: {
+                    collect?: (callback: (session: Session) => Promise<void>) => void
+                    logger?: {
+                        debug: (...args: unknown[]) => void
+                    }
+                }
+            }
+        ).chatluna_character
+
+        if (!characterService) return false
+
+        characterService.collect?.(async (session: Session) => {
+            rawModelResponseGuildId = (session as unknown as { guildId?: string })?.guildId || session?.channelId || null
+        })
+
+        const characterLogger = characterService.logger
+        if (!characterLogger || typeof characterLogger.debug !== 'function') return false
+
+        const originalDebug = characterLogger.debug.bind(characterLogger)
+        characterLogger.debug = (...args: unknown[]) => {
+            originalDebug(...args)
+            const message = args[0]
+            if (typeof message === 'string' && message.startsWith('model response: ')) {
+                const response = message.substring('model response: '.length)
+                if (rawModelResponseGuildId && response) {
+                    rawModelResponseMap.set(rawModelResponseGuildId, response)
+                    if (config.debugLogging) {
+                        log('debug', '拦截到原始输出', { guildId: rawModelResponseGuildId, length: response.length })
+                    }
+                }
+            }
+        }
+        ctx.on('dispose', () => {
+            characterLogger.debug = originalDebug
+        })
+        return true
+    }
+
+    const startRawInterceptorRetry = (): void => {
+        if (rawInterceptorRetryHandle) return
+        rawInterceptorRetryHandle = ctx.setInterval(() => {
+            log('info', '原始输出拦截重试中...')
+            if (initRawModelInterceptor()) {
+                log('info', '原始输出拦截重试成功')
+                if (rawInterceptorRetryHandle) {
+                    rawInterceptorRetryHandle()
+                    rawInterceptorRetryHandle = null
+                }
+            }
+        }, 10 * 60 * 1000)
+    }
+
+    if (config.useRawModelResponse) {
+        const startDelay = 3000
+        log('debug', `原始输出拦截将在 ${startDelay}ms 后启动`)
+        ctx.setTimeout(() => {
+            if (initRawModelInterceptor()) {
+                log('info', '已启用原始输出拦截模式')
+            } else {
+                log('warn', 'chatluna_character 服务不可用，将每10分钟重试一次')
+                startRawInterceptorRetry()
+            }
+        }, startDelay)
+    }
+
     ctx.on('before-send', (session) => {
         if (!config.enableAnalysis) return
         try {
+            const guildId = (session as unknown as { guildId?: string })?.guildId || session?.channelId || ''
+
+            if (config.useRawModelResponse && guildId && rawModelResponseMap.has(guildId)) {
+                const rawResponse = rawModelResponseMap.get(guildId)!
+                rawModelResponseMap.delete(guildId)
+                if (rawResponse) {
+                    analysisSystem.addBotReply(session as Session, rawResponse)
+                    return
+                }
+            }
+
             const rawContent = (session as unknown as { content?: unknown }).content
             if (!rawContent) return
 
@@ -348,7 +434,9 @@ export function apply(ctx: Context, config: Config): void {
     registerGroupListCommand(commandDeps)
     registerClearAllCommand(commandDeps)
 
-    ctx.on('ready', async () => {
+    const initializeServices = async () => {
+        log('info', '插件初始化开始...')
+
         try {
             await manualRelationship.syncToDatabase()
         } catch (error) {
@@ -378,12 +466,14 @@ export function apply(ctx: Context, config: Config): void {
 
         const affinityProvider = createAffinityProvider({ cache, store })
         promptRenderer?.registerFunctionProvider?.(config.affinityVariableName, affinityProvider)
+        log('info', `好感度变量已注册: ${config.affinityVariableName}`)
 
         const relationshipProvider = createRelationshipProvider({ store })
         promptRenderer?.registerFunctionProvider?.(
             config.relationshipVariableName,
             relationshipProvider
         )
+        log('info', `关系变量已注册: ${config.relationshipVariableName}`)
 
         const overviewName = String(
             config.contextAffinityOverview?.variableName || 'contextAffinity'
@@ -395,6 +485,7 @@ export function apply(ctx: Context, config: Config): void {
                 fetchEntries: history.fetchEntries.bind(history)
             })
             promptRenderer?.registerFunctionProvider?.(overviewName, contextAffinityProvider)
+            log('info', `上下文好感度变量已注册: ${overviewName}`)
         }
 
         const userInfoProvider = createUserInfoProvider({
@@ -405,7 +496,10 @@ export function apply(ctx: Context, config: Config): void {
         const userInfoName = String(
             config.userInfo?.variableName || config.otherVariables?.userInfo?.variableName || 'userInfo'
         ).trim()
-        if (userInfoName) promptRenderer?.registerFunctionProvider?.(userInfoName, userInfoProvider)
+        if (userInfoName) {
+            promptRenderer?.registerFunctionProvider?.(userInfoName, userInfoProvider)
+            log('info', `用户信息变量已注册: ${userInfoName}`)
+        }
 
         const botInfoProvider = createBotInfoProvider({
             config,
@@ -415,7 +509,10 @@ export function apply(ctx: Context, config: Config): void {
         const botInfoName = String(
             config.botInfo?.variableName || config.otherVariables?.botInfo?.variableName || 'botInfo'
         ).trim()
-        if (botInfoName) promptRenderer?.registerFunctionProvider?.(botInfoName, botInfoProvider)
+        if (botInfoName) {
+            promptRenderer?.registerFunctionProvider?.(botInfoName, botInfoProvider)
+            log('info', `Bot信息变量已注册: ${botInfoName}`)
+        }
 
         const groupInfoProvider = createGroupInfoProvider({
             config,
@@ -427,13 +524,19 @@ export function apply(ctx: Context, config: Config): void {
                 config.otherVariables?.groupInfo?.variableName ||
                 'groupInfo'
         ).trim()
-        if (groupInfoName) promptRenderer?.registerFunctionProvider?.(groupInfoName, groupInfoProvider)
+        if (groupInfoName) {
+            promptRenderer?.registerFunctionProvider?.(groupInfoName, groupInfoProvider)
+            log('info', `群组信息变量已注册: ${groupInfoName}`)
+        }
 
         const randomProvider = createRandomProvider({ config })
         const randomName = String(
             config.random?.variableName || config.otherVariables?.random?.variableName || 'random'
         ).trim()
-        if (randomName) promptRenderer?.registerFunctionProvider?.(randomName, randomProvider)
+        if (randomName) {
+            promptRenderer?.registerFunctionProvider?.(randomName, randomProvider)
+            log('info', `随机数变量已注册: ${randomName}`)
+        }
 
         if (weatherConfig.enabled && weatherConfig.apiToken) {
             const weatherProvider = createWeatherProvider({ weatherApi })
@@ -462,6 +565,7 @@ export function apply(ctx: Context, config: Config): void {
                 selector: () => true,
                 createTool: () => createAffinityTool(toolDeps)
             })
+            log('info', `好感度工具已注册: ${toolName}`)
         }
 
         if (config.registerRelationshipTool) {
@@ -470,6 +574,7 @@ export function apply(ctx: Context, config: Config): void {
                 selector: () => true,
                 createTool: () => createRelationshipTool(toolDeps)
             })
+            log('info', `关系工具已注册: ${toolName}`)
         }
 
         if (config.registerBlacklistTool) {
@@ -478,6 +583,7 @@ export function apply(ctx: Context, config: Config): void {
                 selector: () => true,
                 createTool: () => createBlacklistTool(toolDeps)
             })
+            log('info', `黑名单工具已注册: ${toolName}`)
         }
 
         if (config.enablePokeTool) {
@@ -487,6 +593,16 @@ export function apply(ctx: Context, config: Config): void {
                 authorization: (session: Session | undefined) => session?.platform === 'onebot',
                 createTool: () => createPokeTool({ ctx, toolName, log })
             })
+            log('info', `戳一戳工具已注册: ${toolName}`)
+        }
+
+        if (weatherConfig.enabled && weatherConfig.apiToken && weatherConfig.registerTool) {
+            const weatherToolName = String(weatherConfig.toolName || 'get_weather').trim() || 'get_weather'
+            plugin.registerTool(weatherToolName, {
+                selector: () => true,
+                createTool: () => createWeatherTool({ weatherApi })
+            })
+            log('info', `天气工具已注册: ${weatherToolName}`)
         }
 
         if (config.enableSetSelfProfileTool) {
@@ -496,6 +612,7 @@ export function apply(ctx: Context, config: Config): void {
                 authorization: (session: Session | undefined) => session?.platform === 'onebot',
                 createTool: () => createSetProfileTool({ ctx, toolName, log })
             })
+            log('info', `设置资料工具已注册: ${toolName}`)
         }
 
         if (config.enableDeleteMessageTool) {
@@ -505,10 +622,23 @@ export function apply(ctx: Context, config: Config): void {
                 authorization: (session: Session | undefined) => session?.platform === 'onebot',
                 createTool: () => createDeleteMessageTool({ ctx, toolName, messageStore, log })
             })
+            log('info', `删除消息工具已注册: ${toolName}`)
         }
 
-        scheduleManager.registerVariables()
-        scheduleManager.registerTool(plugin)
-        scheduleManager.start()
-    })
+        try {
+            scheduleManager.registerVariables()
+            scheduleManager.registerTool(plugin)
+            scheduleManager.start()
+        } catch (error) {
+            log('warn', '日程管理器初始化失败', error)
+        }
+
+        log('info', '插件初始化完成')
+    }
+
+    if (ctx.root.lifecycle.isActive) {
+        initializeServices()
+    } else {
+        ctx.on('ready', initializeServices)
+    }
 }

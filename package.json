@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-chatluna-affinity",
   "description": "为 ChatLuna Character 提供 {好感度}、{关系}、{日程} 等变量并提供对应的工具调用和低好感自动拉黑功能。",
-  "version": "0.2.2-alpha.7",
+  "version": "0.2.2-alpha.8",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -21,15 +21,11 @@
     "koishi",
     "plugin"
   ],
+  "homepage": "https://github.com/Sor85/koishi-plugin-chatluna-affinity",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Sor85/koishi-plugin-chatluna-affinity.git",
-    "directory": "."
+    "url": "git+https://github.com/Sor85/koishi-plugin-chatluna-affinity.git"
   },
-  "bugs": {
-    "url": "https://github.com/Sor85/koishi-plugin-chatluna-affinity/issues"
-  },
-  "homepage": "https://github.com/Sor85/koishi-plugin-chatluna-affinity#readme",
   "koishi": {
     "description": {
       "zh": "ChatLuna 好感度系统"

@@ -214,6 +214,8 @@ export function createScheduleManager(
                 return outfit.description
             }
         )
+
+        log('info', `日程变量已注册: ${variableName}, ${currentVariableName}, ${outfitVariableName}, ${currentOutfitVariableName}`)
     }
 
     const registerTool = (plugin: ChatLunaPlugin): void => {
@@ -245,6 +247,7 @@ export function createScheduleManager(
                 })()
             }
         })
+        log('info', `日程工具已注册: ${toolName}`)
     }
 
     const registerCommand = (): void => {

@@ -4,7 +4,13 @@
  */
 
 import type { Context } from 'koishi'
-import type { WeatherApiResponse, WeatherData, CurrentWeather, WeatherConfig, WeatherHourData } from '../../types/weather'
+import type {
+    WeatherApiResponse,
+    WeatherData,
+    CurrentWeather,
+    WeatherConfig,
+    WeatherHourData
+} from '../../types/weather'
 import type { LogFn } from '../../types'
 
 const API_BASE_URL = 'https://v3.alapi.cn/api/tianqi'
@@ -13,6 +19,10 @@ export interface WeatherApiDeps {
     ctx: Context
     weatherConfig: WeatherConfig
     log: LogFn
+}
+
+export interface WeatherQueryOptions {
+    city?: string
 }
 
 export interface CachedWeatherData {
@@ -109,26 +119,20 @@ export function createWeatherApi(deps: WeatherApiDeps) {
     const { ctx, weatherConfig, log } = deps
     const timezone = 'Asia/Shanghai'
 
-    let cachedData: CachedWeatherData | null = null
-    let cachedKey: string | null = null
+    const cache = new Map<string, CachedWeatherData>()
 
-    const buildRequestParams = (): Record<string, string> => {
+    const buildRequestParams = (options?: WeatherQueryOptions): Record<string, string> => {
         const params: Record<string, string> = {
             token: weatherConfig.apiToken
         }
 
-        switch (weatherConfig.searchType) {
-            case 'city':
-                if (weatherConfig.cityName) params.city = weatherConfig.cityName
-                break
-            case 'ip':
-                break
-        }
+        const city = (options?.city || weatherConfig.cityName || '').trim()
+        if (city) params.city = city
 
         return params
     }
 
-    const buildCacheKey = (now: Date): string => {
+    const buildCacheKey = (now: Date, cityKey: string): string => {
         const formatter = new Intl.DateTimeFormat('zh-CN', {
             timeZone: timezone,
             year: 'numeric',
@@ -137,38 +141,40 @@ export function createWeatherApi(deps: WeatherApiDeps) {
             hour: weatherConfig.hourlyRefresh ? '2-digit' : undefined,
             hour12: false
         })
-        return formatter.format(now).replace(/[\/\s:]/g, '-')
+        const timeKey = formatter.format(now).replace(/[\/\s:]/g, '-')
+        return `${cityKey || 'default'}-${timeKey}`
     }
 
-    const fetchWeather = async (): Promise<CachedWeatherData | null> => {
+    const fetchWeather = async (options?: WeatherQueryOptions): Promise<CachedWeatherData | null> => {
         if (!weatherConfig.enabled || !weatherConfig.apiToken) {
             return null
         }
 
         const now = new Date()
-        const currentKey = buildCacheKey(now)
+        const cityKey = (options?.city || weatherConfig.cityName || '').trim()
+        if (!cityKey) return null
+        const currentKey = buildCacheKey(now, cityKey)
 
-        if (cachedData && cachedKey === currentKey) {
-            return cachedData
-        }
+        if (cache.has(currentKey)) return cache.get(currentKey) || null
 
         try {
-            const params = buildRequestParams()
+            const params = buildRequestParams(options)
+            if (!params.city) return null
             const queryString = new URLSearchParams(params).toString()
             const url = `${API_BASE_URL}?${queryString}`
 
             const response = await ctx.http.get<WeatherApiResponse>(url)
 
             if (!response.success || response.code !== 200 || !response.data) {
-                log('warn', '天气 API 请求失败', { message: response.message, code: response.code })
-                return cachedData
+                log('warn', '天气 API 请求失败', { message: response.message, code: response.code, city: params.city })
+                return cache.get(currentKey) || null
             }
 
             const data = response.data
             const hourData = findCurrentHourWeather(data.hour, timezone)
             const current = formatCurrentWeather(data, hourData, timezone)
 
-            cachedData = {
+            const cachedData: CachedWeatherData = {
                 current,
                 dailyWeather: data.weather,
                 hourlyWeather: hourData?.wea || data.weather,
@@ -177,43 +183,42 @@ export function createWeatherApi(deps: WeatherApiDeps) {
                 dailyMaxTemp: data.max_temp,
                 hourlyTemp: hourData?.temp ?? data.temp
             }
-            cachedKey = currentKey
+            cache.set(currentKey, cachedData)
 
             log('debug', '天气数据已更新', { city: current.city, daily: cachedData.dailyWeather, hourly: cachedData.hourlyWeather })
 
             return cachedData
         } catch (error) {
             log('warn', '获取天气数据失败', error)
-            return cachedData
+            return cache.get(currentKey) || null
         }
     }
 
-    const getCurrentWeather = async (): Promise<CurrentWeather | null> => {
-        const data = await fetchWeather()
+    const getCurrentWeather = async (options?: WeatherQueryOptions): Promise<CurrentWeather | null> => {
+        const data = await fetchWeather(options)
         return data?.current || null
     }
 
-    const getWeatherText = async (): Promise<string> => {
-        const data = await fetchWeather()
+    const getWeatherText = async (options?: WeatherQueryOptions): Promise<string> => {
+        const data = await fetchWeather(options)
         if (!data) return ''
         return formatWeatherText(data.current)
     }
 
-    const getDailyWeather = async (): Promise<string> => {
-        const data = await fetchWeather()
+    const getDailyWeather = async (options?: WeatherQueryOptions): Promise<string> => {
+        const data = await fetchWeather(options)
         if (!data) return ''
         return `${data.dailyWeather}，${data.dailyTemp}°C（${data.dailyMinTemp}~${data.dailyMaxTemp}°C）`
     }
 
-    const getHourlyWeather = async (): Promise<string> => {
-        const data = await fetchWeather()
+    const getHourlyWeather = async (options?: WeatherQueryOptions): Promise<string> => {
+        const data = await fetchWeather(options)
         if (!data) return ''
         return `${data.hourlyWeather}，${data.hourlyTemp}°C`
     }
 
     const invalidateCache = (): void => {
-        cachedData = null
-        cachedKey = null
+        cache.clear()
     }
 
     return {

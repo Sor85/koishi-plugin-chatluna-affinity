@@ -23,6 +23,11 @@ export interface Config {
         registerTool?: boolean
         toolName?: string
     }
+    weather?: {
+        enabled?: boolean
+        registerTool?: boolean
+        toolName?: string
+    }
     userInfo?: { enabled?: boolean; variableName?: string }
     botInfo?: { enabled?: boolean; variableName?: string }
     groupInfo?: { enabled?: boolean; variableName?: string }
