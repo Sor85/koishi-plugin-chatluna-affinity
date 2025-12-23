@@ -10,6 +10,8 @@ export const OneBotToolsSchema = Schema.object({
     pokeToolName: Schema.string().default('poke_user').description('ChatLuna 工具名称：戳一戳'),
     enableSetSelfProfileTool: Schema.boolean().default(false).description('注册 ChatLuna 工具：修改自身账户信息'),
     setSelfProfileToolName: Schema.string().default('set_self_profile').description('ChatLuna 工具名称：修改自身账户信息（支持昵称/签名/性别）'),
+    enableSetGroupCardTool: Schema.boolean().default(false).description('注册 ChatLuna 工具：修改群成员昵称'),
+    setGroupCardToolName: Schema.string().default('set_group_card').description('ChatLuna 工具名称：修改群成员昵称'),
     enableDeleteMessageTool: Schema.boolean().default(false).description('注册 ChatLuna 工具：撤回消息'),
     deleteMessageToolName: Schema.string().default('delete_msg').description('ChatLuna 工具名称：撤回消息'),
     panSouTool: Schema.object({

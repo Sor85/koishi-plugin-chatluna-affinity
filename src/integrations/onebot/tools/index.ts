@@ -4,4 +4,5 @@
 
 export * from './poke'
 export * from './profile'
+export * from './set-group-card'
 export * from './delete-msg'

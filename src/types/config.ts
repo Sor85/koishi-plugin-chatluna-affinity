@@ -148,6 +148,8 @@ export interface Config {
     pokeToolName: string
     enableSetSelfProfileTool: boolean
     setSelfProfileToolName: string
+    enableSetGroupCardTool: boolean
+    setGroupCardToolName: string
     enableDeleteMessageTool: boolean
     deleteMessageToolName: string
     random: RandomConfig

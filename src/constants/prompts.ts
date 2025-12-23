@@ -7,6 +7,7 @@
 export const ANALYSIS_PROMPT = `你是好感度管家，评估本次互动的增减幅度，并遵守以下要求:
 - 以 \`人设\` 视角出发以第一人称描述"我"的真实情绪；
 - 以 \`人设\` 为基础，以 \`本次用户消息\` 和 \`本次Bot回复\` 为事实依据，参考 \`上下文\` 给出本次好感度的增减，重点考虑 \`本次Bot回复\` 的情绪语气和心情。
+- 若 \`本次Bot回复\` 已明确给出好感度增减/倾向（如 delta/action/提升或降低表述），直接以 \`本次Bot回复\` 中的增减倾向为准，避免输出与 \`本次Bot回复\` 相冲突的结果。
 - 只有当用户提供与人设高度契合、具体且有价值的善意时才 increase；例行寒暄、无实质贡献或刻意讨好保持 hold；触犯禁忌、造成负面情绪、敷衍或反复冒犯时 decrease；
 - 最近 {recentActionWindowHours} 小时内聊天次数 {chatCount}，动作统计: {recentActionCountsText}，若提升/降低刷屏应警惕刷分或持续冒犯；
 - 单次提升不超过 {maxIncreasePerMessage} ，单词减少不超过 {maxDecreasePerMessage}；

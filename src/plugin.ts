@@ -43,7 +43,12 @@ import {
     createBlacklistTool,
     createWeatherTool
 } from './integrations/chatluna/tools'
-import { createPokeTool, createSetProfileTool, createDeleteMessageTool } from './integrations/onebot/tools'
+import {
+    createPokeTool,
+    createSetProfileTool,
+    createSetGroupCardTool,
+    createDeleteMessageTool
+} from './integrations/onebot/tools'
 import {
     registerRankCommand,
     registerInspectCommand,
@@ -613,6 +618,16 @@ export function apply(ctx: Context, config: Config): void {
                 createTool: () => createSetProfileTool({ ctx, toolName, log })
             })
             log('info', `设置资料工具已注册: ${toolName}`)
+        }
+
+        if (config.enableSetGroupCardTool) {
+            const toolName = String(config.setGroupCardToolName || 'set_group_card').trim()
+            plugin.registerTool(toolName, {
+                selector: () => true,
+                authorization: (session: Session | undefined) => session?.platform === 'onebot',
+                createTool: () => createSetGroupCardTool({ ctx, toolName, log })
+            })
+            log('info', `群昵称工具已注册: ${toolName}`)
         }
 
         if (config.enableDeleteMessageTool) {
