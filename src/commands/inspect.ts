@@ -33,6 +33,7 @@ export function registerInspectCommand(deps: CommandDependencies) {
                 1.0
             const currentCompositeAffinity = Math.round(coefficient * state.longTermAffinity)
 
+            const showImpression = config.inspectShowImpression !== false
             const shouldRenderImage =
                 imageArg === undefined
                     ? !!config.inspectRenderAsImage
@@ -57,29 +58,31 @@ export function registerInspectCommand(deps: CommandDependencies) {
             }
 
             let impression: string | undefined
-            const analysisService = (
-                ctx as unknown as {
-                    chatluna_group_analysis?: {
-                        getUserPersona?: (
-                            platform: string,
-                            selfId: string,
-                            userId: string
-                        ) => Promise<{ profile: { summary: string } } | null>
+            if (showImpression) {
+                const analysisService = (
+                    ctx as unknown as {
+                        chatluna_group_analysis?: {
+                            getUserPersona?: (
+                                platform: string,
+                                selfId: string,
+                                userId: string
+                            ) => Promise<{ profile: { summary: string } } | null>
+                        }
                     }
-                }
-            ).chatluna_group_analysis
-            if (analysisService?.getUserPersona) {
-                try {
-                    const persona = await analysisService.getUserPersona(
-                        platform,
-                        selfId,
-                        stripAtPrefix(userId)
-                    )
-                    if (persona?.profile?.summary) {
-                        impression = persona.profile.summary
+                ).chatluna_group_analysis
+                if (analysisService?.getUserPersona) {
+                    try {
+                        const persona = await analysisService.getUserPersona(
+                            platform,
+                            selfId,
+                            stripAtPrefix(userId)
+                        )
+                        if (persona?.profile?.summary) {
+                            impression = persona.profile.summary
+                        }
+                    } catch {
+                        // ignore
                     }
-                } catch {
-                    // ignore
                 }
             }
 
@@ -94,7 +97,7 @@ export function registerInspectCommand(deps: CommandDependencies) {
                 `好感度系数：${coefficient.toFixed(2)}（连续互动 ${state.coefficientState?.streak ?? 0} 天）`,
                 `交互统计：总计 ${state.chatCount} 次`,
                 `最后互动：${formatTimestamp(state.lastInteractionAt)}`,
-                ...(impression ? [`印象：${impression}`] : [])
+                ...(showImpression && impression ? [`印象：${impression}`] : [])
             ]
 
             if (shouldRenderImage && puppeteer?.page) {
@@ -120,7 +123,7 @@ export function registerInspectCommand(deps: CommandDependencies) {
                     chatCount: state.chatCount,
                     lastInteraction: formatTimestamp(state.lastInteractionAt),
                     avatarUrl,
-                    impression
+                    impression: showImpression ? impression : undefined
                 })
                 if (buffer) return h.image(buffer, 'image/png')
             }

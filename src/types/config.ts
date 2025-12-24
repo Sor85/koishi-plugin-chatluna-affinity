@@ -172,5 +172,6 @@ export interface Config {
     otherVariables?: OtherVariablesConfig
     groupListRenderAsImage?: boolean
     inspectRenderAsImage?: boolean
+    inspectShowImpression?: boolean
     affinityGroups?: AffinityGroup[]
 }

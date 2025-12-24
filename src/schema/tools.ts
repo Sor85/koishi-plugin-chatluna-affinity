@@ -43,7 +43,8 @@ export const OneBotToolsSchema = Schema.object({
 
 export const OtherCommandsSchema = Schema.object({
     groupListRenderAsImage: Schema.boolean().default(false).description('将群聊列表渲染为图片（affinity.groupList）'),
-    inspectRenderAsImage: Schema.boolean().default(false).description('将好感度详情渲染为图片（affinity.inspect）')
+    inspectRenderAsImage: Schema.boolean().default(false).description('将好感度详情渲染为图片（affinity.inspect）'),
+    inspectShowImpression: Schema.boolean().default(true).description('在好感度详情中显示印象（affinity.inspect）')
 }).description('其他指令')
 
 export const OtherSettingsSchema = Schema.object({
