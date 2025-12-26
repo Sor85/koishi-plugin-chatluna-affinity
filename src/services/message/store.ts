@@ -125,6 +125,18 @@ export function createMessageStore(options: MessageStoreOptions) {
         return null
     }
 
+    const findByIds = (
+        session: Session,
+        messageIds: string[]
+    ): StoredMessage[] => {
+        const key = makeKey(session)
+        const list = cache.get(key) || []
+        if (!list.length || !messageIds.length) return []
+
+        const idSet = new Set(messageIds.map((id) => id.trim()).filter(Boolean))
+        return list.filter((msg) => idSet.has(msg.messageId))
+    }
+
     const findByContent = (
         session: Session,
         keyword: string,
@@ -157,6 +169,7 @@ export function createMessageStore(options: MessageStoreOptions) {
         record,
         getMessages,
         findByLastN,
+        findByIds,
         findByContent,
         clear
     }

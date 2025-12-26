@@ -150,6 +150,10 @@ export interface Config {
     setSelfProfileToolName: string
     enableSetGroupCardTool: boolean
     setGroupCardToolName: string
+    enableSetMsgEmojiTool: boolean
+    setMsgEmojiToolName: string
+    enableForwardMessageTool: boolean
+    forwardMessageToolName: string
     enableDeleteMessageTool: boolean
     deleteMessageToolName: string
     random: RandomConfig

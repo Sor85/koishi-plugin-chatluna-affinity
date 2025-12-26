@@ -43,12 +43,12 @@ import {
     createBlacklistTool,
     createWeatherTool
 } from './integrations/chatluna/tools'
-import {
-    createPokeTool,
-    createSetProfileTool,
-    createSetGroupCardTool,
-    createDeleteMessageTool
-} from './integrations/onebot/tools'
+import { createPokeTool } from './integrations/onebot/tools/poke'
+import { createSetProfileTool } from './integrations/onebot/tools/profile'
+import { createSetGroupCardTool } from './integrations/onebot/tools/set-group-card'
+import { createSetMsgEmojiTool } from './integrations/onebot/tools/set-msg-emoji'
+import { createForwardMessageTool } from './integrations/onebot/tools/send-forward-msg'
+import { createDeleteMessageTool } from './integrations/onebot/tools/delete-msg'
 import {
     registerRankCommand,
     registerInspectCommand,
@@ -57,7 +57,8 @@ import {
     registerTempBlockCommand,
     registerGroupListCommand,
     registerClearAllCommand,
-    registerAdjustCommand
+    registerAdjustCommand,
+    registerEnabledListCommands
 } from './commands'
 import {
     fetchMember,
@@ -438,6 +439,7 @@ export function apply(ctx: Context, config: Config): void {
     registerTempBlockCommand({ ...commandDeps, temporaryBlacklist })
     registerGroupListCommand(commandDeps)
     registerClearAllCommand(commandDeps)
+    registerEnabledListCommands(commandDeps)
 
     const initializeServices = async () => {
         log('info', '插件初始化开始...')
@@ -630,12 +632,37 @@ export function apply(ctx: Context, config: Config): void {
             log('info', `群昵称工具已注册: ${toolName}`)
         }
 
+        if (config.enableSetMsgEmojiTool) {
+            const toolName = String(config.setMsgEmojiToolName || 'set_msg_emoji').trim()
+            plugin.registerTool(toolName, {
+                selector: () => true,
+                authorization: (session: Session | undefined) => session?.platform === 'onebot',
+                createTool: () => createSetMsgEmojiTool({ toolName, log })
+            })
+            log('info', `消息表情工具已注册: ${toolName}`)
+        }
+
+        if (config.enableForwardMessageTool) {
+            const toolName = String(config.forwardMessageToolName || 'send_forward_msg').trim()
+            plugin.registerTool(toolName, {
+                selector: () => true,
+                authorization: (session: Session | undefined) => session?.platform === 'onebot',
+                createTool: () =>
+                    createForwardMessageTool({
+                        toolName,
+                        messageStore,
+                        log
+                    })
+            })
+            log('info', `合并转发消息工具已注册: ${toolName}`)
+        }
+
         if (config.enableDeleteMessageTool) {
             const toolName = String(config.deleteMessageToolName || 'delete_msg').trim()
             plugin.registerTool(toolName, {
                 selector: () => true,
                 authorization: (session: Session | undefined) => session?.platform === 'onebot',
-                createTool: () => createDeleteMessageTool({ ctx, toolName, messageStore, log })
+                createTool: () => createDeleteMessageTool({ toolName, log })
             })
             log('info', `删除消息工具已注册: ${toolName}`)
         }
