@@ -5,6 +5,7 @@
 
 export * from './affinity'
 export * from './relationship'
+export * from './relationship-level'
 export * from './context-affinity'
 export * from './user-info'
 export * from './bot-info'

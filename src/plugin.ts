@@ -29,6 +29,7 @@ import { createRenderService } from './renders'
 import {
     createAffinityProvider,
     createRelationshipProvider,
+    createRelationshipLevelProvider,
     createContextAffinityProvider,
     createUserInfoProvider,
     createBotInfoProvider,
@@ -481,6 +482,18 @@ export function apply(ctx: Context, config: Config): void {
             relationshipProvider
         )
         log('info', `关系变量已注册: ${config.relationshipVariableName}`)
+
+        const relationshipLevelName = String(
+            config.relationshipAffinityLevelVariableName || 'relationshipAffinityLevel'
+        ).trim()
+        if (relationshipLevelName) {
+            const relationshipLevelProvider = createRelationshipLevelProvider({ store, config })
+            promptRenderer?.registerFunctionProvider?.(
+                relationshipLevelName,
+                relationshipLevelProvider
+            )
+            log('info', `好感度区间变量已注册: ${relationshipLevelName}`)
+        }
 
         const overviewName = String(
             config.contextAffinityOverview?.variableName || 'contextAffinity'

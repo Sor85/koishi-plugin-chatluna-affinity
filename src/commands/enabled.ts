@@ -15,6 +15,10 @@ function resolveVariableNames(config: CommandDependencies['config']) {
 
     push('好感度变量', config.affinityVariableName)
     push('关系变量', config.relationshipVariableName)
+    push(
+        '好感度区间变量',
+        config.relationshipAffinityLevelVariableName || 'relationshipAffinityLevel'
+    )
     push('上下文好感度变量', config.contextAffinityOverview?.variableName || 'contextAffinity')
     push(
         '用户信息变量',

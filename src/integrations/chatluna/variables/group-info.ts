@@ -4,7 +4,7 @@
  */
 
 import type { Session } from 'koishi'
-import type { Config, LogFn } from '../../../types'
+import type { Config, LogFn, MemberInfo } from '../../../types'
 
 interface ProviderConfigurable {
     session?: Session
@@ -62,6 +62,77 @@ async function fetchGroupInfo(session: Session): Promise<GroupInfo | null> {
     return null
 }
 
+async function fetchOwnersAndAdmins(
+    session: Session,
+    log?: LogFn
+): Promise<{ owners: string[]; admins: string[] } | null> {
+    try {
+        if (session.platform !== 'onebot') return null
+        const guildId = session.guildId
+        if (!guildId) return null
+
+        const bot = session.bot
+        const internal = (bot as unknown as { internal?: Record<string, unknown> })?.internal
+
+        let members: MemberInfo[] | null = null
+        if (internal) {
+            if (typeof internal.getGroupMemberList === 'function') {
+                members = await (internal.getGroupMemberList as (
+                    groupId: string | number
+                ) => Promise<MemberInfo[]>)(guildId)
+            } else if (typeof internal._request === 'function') {
+                members = await (internal._request as (action: string, params: unknown) => Promise<MemberInfo[]>)(
+                    'get_group_member_list',
+                    { group_id: Number(guildId) }
+                )
+            }
+        }
+
+        if (!members && typeof bot.getGuildMemberList === 'function') {
+            const list = await bot.getGuildMemberList(guildId)
+            members = (list?.data as MemberInfo[]) || null
+        }
+
+        if (!members || !Array.isArray(members) || members.length === 0) return null
+
+        const owners: string[] = []
+        const admins: string[] = []
+
+        for (const member of members) {
+            const roleRaw =
+                member.role ||
+                member.roleName ||
+                member.permission ||
+                member.identity ||
+                (Array.isArray(member.roles) ? member.roles[0] : '') ||
+                ''
+            const role = String(roleRaw || '').toLowerCase()
+            const userId = String(member.user_id || member.userId || member.id || member.qq || member.uid || '')
+            const candidates = [
+                member.card,
+                member.remark,
+                member.displayName,
+                member.nick,
+                member.nickname,
+                member.name
+            ].map((item) => (item ? String(item).trim() : ''))
+            const name = candidates.find((item) => item) || userId
+            const label = userId ? `${name}(${userId})` : name
+
+            if (role === 'owner' || role === 'master' || role === 'leader') {
+                owners.push(label)
+            } else if (role === 'admin' || role === 'administrator' || role === 'manager') {
+                admins.push(label)
+            }
+        }
+
+        return { owners, admins }
+    } catch (error) {
+        log?.('debug', '获取群管理信息失败', error)
+        return null
+    }
+}
+
 function formatGroupInfo(group: GroupInfo, options: { includeMemberCount: boolean; includeCreateTime: boolean }): string {
     const { includeMemberCount, includeCreateTime } = options
 
@@ -102,17 +173,34 @@ export function createGroupInfoProvider(deps: GroupInfoProviderDeps) {
 
         const groupInfoCfg = config.groupInfo || config.otherVariables?.groupInfo || {
             includeMemberCount: true,
-            includeCreateTime: true
+            includeCreateTime: true,
+            includeOwnersAndAdmins: false
         }
 
         try {
             const groupInfo = await fetchGroupInfo(session)
             if (!groupInfo) return '未能获取当前群信息。'
 
-            return formatGroupInfo(groupInfo, {
+            const baseText = formatGroupInfo(groupInfo, {
                 includeMemberCount: groupInfoCfg.includeMemberCount !== false,
                 includeCreateTime: groupInfoCfg.includeCreateTime !== false
             })
+
+            if (groupInfoCfg.includeOwnersAndAdmins) {
+                const roles = await fetchOwnersAndAdmins(session, log)
+                if (roles) {
+                    const ownersText = roles.owners.length
+                        ? roles.owners.join('、')
+                        : '无'
+                    const adminsText = roles.admins.length
+                        ? roles.admins.join('、')
+                        : '无'
+                    const extra = `\n群主：${ownersText}\n管理员：${adminsText}`
+                    return `${baseText}${extra}`
+                }
+            }
+
+            return baseText
         } catch (error) {
             log?.('debug', '群信息变量解析失败', error)
             return '获取群信息失败。'

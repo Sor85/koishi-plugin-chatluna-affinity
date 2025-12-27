@@ -107,3 +107,38 @@
 ## 许可证
 
 MIT © 2024-present chatluna-affinity contributors
+
+## 更新日志
+
+0.2.2-alpha.12
+- groupInfo 变量新增 includeOwnersAndAdmins 配置，用于展示群主/管理员名单
+- 关系设置新增新增好感度区间变量 relationshipAffinityLevel ，按配置逐行展示所有好感度区间、关系与备注
+
+0.2.2-alpha.11
+- 撤回工具修改为按 messageid 撤回，移除 lastN/关键词等模糊匹配路径
+- 新增 set_msg_emoji 工具，按 messageid + emoji_id 对消息添加表情
+- 新增 send_forward_msg 合并转发工具（未完成）
+- 新增 varslist/toolslist 指令，分别列出已启用的变量与工具
+
+0.2.2-alpha.10
+- 好感度详情新增“印象”显示开关 inspectShowImpression，可关闭印象获取与展示（affinity.inspect）
+
+0.2.2-alpha.9
+- 新增群昵称工具，支持修改群成员昵称（OneBot 平台，需群管理权限）
+- 好感度分析提示词调整：若 Bot 回复已包含好感度变化倾向，则以回复为准，避免冲突
+
+0.2.2-alpha.8
+- 好感度设置中新增“使用原始输出”开关，开启后好感度分析直接使用 chatluna-character 的原始输出
+- 天气设置新增 get_weather 工具注册，可通过工具查询指定城市天气
+
+0.2.2-alpha.7
+- 在好感度分析提示词中新增 currentRelationship 变量
+
+0.2.2-alpha.6
+- 新增 weather、outfit 变量
+
+0.2.2-alpha.5
+- fix
+
+0.2.2-alpha.4
+- 修改好感度分组的存储键格式，使用 groupName,selfId 作为数据库记录的 selfId 字段

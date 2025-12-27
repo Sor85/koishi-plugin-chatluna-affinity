@@ -54,7 +54,10 @@ export const OtherVariablesSchema = Schema.object({
     groupInfo: Schema.object({
         variableName: Schema.string().default('groupInfo').description('变量名称'),
         includeMemberCount: Schema.boolean().default(true).description('是否包含成员数量'),
-        includeCreateTime: Schema.boolean().default(true).description('是否包含创建时间')
+        includeCreateTime: Schema.boolean().default(true).description('是否包含创建时间'),
+        includeOwnersAndAdmins: Schema.boolean()
+            .default(true)
+            .description('是否展示群主与管理员名单')
     })
         .description('群信息变量')
         .collapse(),
@@ -69,7 +72,12 @@ export const OtherVariablesSchema = Schema.object({
     .default({
         userInfo: { variableName: 'userInfo', items: [...DEFAULT_MEMBER_INFO_ITEMS] },
         botInfo: { variableName: 'botInfo', items: [...DEFAULT_MEMBER_INFO_ITEMS] },
-        groupInfo: { variableName: 'groupInfo', includeMemberCount: true, includeCreateTime: true },
+        groupInfo: {
+            variableName: 'groupInfo',
+            includeMemberCount: true,
+            includeCreateTime: true,
+            includeOwnersAndAdmins: true
+        },
         random: { variableName: 'random', min: 0, max: 100 }
     })
     .description('其他变量')

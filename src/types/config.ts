@@ -88,6 +88,7 @@ export interface GroupInfoConfig {
     variableName: string
     includeMemberCount: boolean
     includeCreateTime: boolean
+    includeOwnersAndAdmins: boolean
 }
 
 export interface RandomConfig {
@@ -158,6 +159,7 @@ export interface Config {
     deleteMessageToolName: string
     random: RandomConfig
     relationshipVariableName: string
+    relationshipAffinityLevelVariableName: string
     relationships: ManualRelationship[]
     relationshipAffinityLevels: RelationshipLevel[]
     registerAffinityTool: boolean

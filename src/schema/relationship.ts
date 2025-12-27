@@ -28,6 +28,9 @@ export const RelationshipSchema = Schema.object({
         { min: 121, max: 180, relation: '友好', note: '互有好感，愿意主动分享自己的经历和感受，是值得信赖的朋友。' },
         { min: 181, max: 9999, relation: '亲密', note: '关系非常亲密，会毫无顾忌地开玩笑、吐槽，也会自然地撒娇和分享自己的小情绪。' }
     ]).description('好感度区间关系'),
+    relationshipAffinityLevelVariableName: Schema.string()
+        .default('relationshipAffinityLevel')
+        .description('好感度区间变量名称'),
     registerRelationshipTool: Schema.boolean().default(false).description('注册 ChatLuna 工具：调整关系'),
     relationshipToolName: Schema.string().default('adjust_relationship').description('ChatLuna 工具名称：调整关系')
 }).description('关系设置')
