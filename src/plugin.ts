@@ -48,6 +48,7 @@ import { createPokeTool } from './integrations/onebot/tools/poke'
 import { createSetProfileTool } from './integrations/onebot/tools/profile'
 import { createSetGroupCardTool } from './integrations/onebot/tools/set-group-card'
 import { createSetMsgEmojiTool } from './integrations/onebot/tools/set-msg-emoji'
+import { createFakeMessageTool } from './integrations/onebot/tools/send-fake-msg'
 import { createForwardMessageTool } from './integrations/onebot/tools/send-forward-msg'
 import { createDeleteMessageTool } from './integrations/onebot/tools/delete-msg'
 import {
@@ -668,6 +669,16 @@ export function apply(ctx: Context, config: Config): void {
                     })
             })
             log('info', `合并转发消息工具已注册: ${toolName}`)
+        }
+
+        if (config.enableFakeMessageTool) {
+            const toolName = String(config.fakeMessageToolName || 'send_fake_msg').trim()
+            plugin.registerTool(toolName, {
+                selector: () => true,
+                authorization: (session: Session | undefined) => session?.platform === 'onebot',
+                createTool: () => createFakeMessageTool({ toolName, log })
+            })
+            log('info', `伪造消息工具已注册: ${toolName}`)
         }
 
         if (config.enableDeleteMessageTool) {

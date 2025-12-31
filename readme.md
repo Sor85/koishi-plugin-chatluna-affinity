@@ -110,6 +110,9 @@ MIT © 2024-present chatluna-affinity contributors
 
 ## 更新日志
 
+0.2.2-alpha.13
+- 新增 send_fake_msg 工具，用于伪造消息并发送合并转发
+
 0.2.2-alpha.12
 - groupInfo 变量新增 includeOwnersAndAdmins 配置，用于展示群主/管理员名单
 - 关系设置新增新增好感度区间变量 relationshipAffinityLevel ，按配置逐行展示所有好感度区间、关系与备注

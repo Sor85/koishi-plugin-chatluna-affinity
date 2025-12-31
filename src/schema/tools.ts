@@ -24,6 +24,12 @@ export const OneBotToolsSchema = Schema.object({
     forwardMessageToolName: Schema.string()
         .default('send_forward_msg')
         .description('ChatLuna 工具名称：合并转发消息'),
+    enableFakeMessageTool: Schema.boolean()
+        .default(false)
+        .description('注册 ChatLuna 工具：伪造消息'),
+    fakeMessageToolName: Schema.string()
+        .default('send_fake_msg')
+        .description('ChatLuna 工具名称：伪造消息'),
     enableDeleteMessageTool: Schema.boolean()
         .default(false)
         .description('注册 ChatLuna 工具：撤回消息（需 chatluna-character 开启 enableMessageId）'),

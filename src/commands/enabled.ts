@@ -83,6 +83,9 @@ function resolveToolNames(config: CommandDependencies['config']) {
     if (config.enableForwardMessageTool) {
         tools.push(`合并转发工具：${(config.forwardMessageToolName || 'send_forward_msg').trim()}`)
     }
+    if (config.enableFakeMessageTool) {
+        tools.push(`伪造消息工具：${(config.fakeMessageToolName || 'send_fake_msg').trim()}`)
+    }
     if (config.enableDeleteMessageTool) {
         tools.push(`撤回消息工具：${(config.deleteMessageToolName || 'delete_msg').trim()}`)
     }

@@ -19,6 +19,9 @@ export { ConfigSchema, AffinitySchema, BlacklistSchema, RelationshipSchema, Sche
 export const usage = `
 ## 更新日志
 
+0.2.2-alpha.13
+- 新增 send_fake_msg 工具，用于伪造消息并发送合并转发
+
 0.2.2-alpha.12
 - groupInfo 变量新增 includeOwnersAndAdmins 配置，用于展示群主/管理员名单
 - 关系设置新增新增好感度区间变量 relationshipAffinityLevel ，按配置逐行展示所有好感度区间、关系与备注
@@ -28,7 +31,4 @@ export const usage = `
 - 新增 set_msg_emoji 工具，按 messageid + emoji_id 对消息添加表情
 - 新增 send_forward_msg 合并转发工具（未完成）
 - 新增 varslist/toolslist 指令，分别列出已启用的变量与工具
-
-0.2.2-alpha.10
-- 好感度详情新增“印象”显示开关 inspectShowImpression，可关闭印象获取与展示（affinity.inspect）
 `;

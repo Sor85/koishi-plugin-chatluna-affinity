@@ -155,6 +155,8 @@ export interface Config {
     setMsgEmojiToolName: string
     enableForwardMessageTool: boolean
     forwardMessageToolName: string
+    enableFakeMessageTool: boolean
+    fakeMessageToolName: string
     enableDeleteMessageTool: boolean
     deleteMessageToolName: string
     random: RandomConfig
