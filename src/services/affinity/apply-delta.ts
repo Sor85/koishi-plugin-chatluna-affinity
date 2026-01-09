@@ -20,6 +20,7 @@ export interface ApplyAffinityDeltaParams {
         ) => Promise<{
             longTermAffinity?: number
             shortTermAffinity?: number
+            chatCount?: number
             actionStats?: ActionStats
             coefficientState?: CoefficientState
         }>
@@ -113,6 +114,7 @@ export async function applyAffinityDelta(params: ApplyAffinityDeltaParams): Prom
             entries: appendActionEntry(current?.actionStats?.entries, action, Date.now(), maxActionEntries)
         }
         const newCombined = store.clamp(Math.round(newLongTerm * coefficient))
+        const newChatCount = (current?.chatCount || 0) + 1
 
         await store.save(
             { platform, userId, selfId, session },
@@ -121,6 +123,7 @@ export async function applyAffinityDelta(params: ApplyAffinityDeltaParams): Prom
             {
                 shortTermAffinity: newShortTerm,
                 longTermAffinity: newLongTerm,
+                chatCount: newChatCount,
                 actionStats: newActionStats,
                 coefficientState: current?.coefficientState || undefined,
                 lastInteractionAt: new Date()

@@ -110,6 +110,9 @@ MIT © 2024-present chatluna-affinity contributors
 
 ## 更新日志
 
+0.2.3-alpha.2
+- 修复好感度更新时未更新 chatCount 的问题
+
 0.2.3-alpha.1
 - 新增 XML 工具，解析原始输出中的 <poke id=\"\" /> 戳一戳、<emoji id=\"\" /> 表情回应、<delete message_id=\"\" /> 撤回消息
 - 重构好感度，从依赖外部模型改为解析原始输出中的 <affinity delta=\"\" action=\"increase|decrease\" id=\"\" />

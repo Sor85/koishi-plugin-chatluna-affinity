@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-chatluna-affinity",
 "description": "为 ChatLuna Character 提供更多变量及工具，例如 {好感度}、{关系}、{日程}、{天气}、{用户信息}、{机器人信息}、{群信息}等变量并提供对应的工具调用和低好感自动拉黑功能。",
-  "version": "0.2.3-alpha.1",
+  "version": "0.2.3-alpha.2",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -11,8 +11,8 @@
   ],
   "license": "MIT",
   "scripts": {
-    "build": "tsup && node --max-old-space-size=16384 ./node_modules/typescript/lib/tsc.js --emitDeclarationOnly --outDir lib --skipLibCheck && vite build",
-    "build:server": "tsup && node --max-old-space-size=16384 ./node_modules/typescript/lib/tsc.js --emitDeclarationOnly --outDir lib --skipLibCheck",
+    "build": "tsup && rimraf tsconfig.tsbuildinfo && node --max-old-space-size=16384 ./node_modules/typescript/lib/tsc.js --emitDeclarationOnly --outDir lib --skipLibCheck --incremental false && vite build",
+    "build:server": "tsup && rimraf tsconfig.tsbuildinfo && node --max-old-space-size=16384 ./node_modules/typescript/lib/tsc.js --emitDeclarationOnly --outDir lib --skipLibCheck --incremental false",
     "build:client": "vite build",
     "build:parallel": "npm run build:server & npm run build:client; wait",
     "watch": "tsup --watch",
