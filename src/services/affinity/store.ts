@@ -118,7 +118,7 @@ export function createAffinityStore(options: AffinityStoreOptions) {
                 actionStats: {
                     entries: [],
                     total: 0,
-                    counts: { increase: 0, decrease: 0, hold: 0 }
+                    counts: { increase: 0, decrease: 0 }
                 },
                 lastInteractionAt: null,
                 coefficientState: {
@@ -136,7 +136,7 @@ export function createAffinityStore(options: AffinityStoreOptions) {
         let actionStats: ActionStats = {
             entries: [],
             total: 0,
-            counts: { increase: 0, decrease: 0, hold: 0 }
+            counts: { increase: 0, decrease: 0 }
         }
         if (record.actionStats) {
             try {
@@ -144,7 +144,10 @@ export function createAffinityStore(options: AffinityStoreOptions) {
                 actionStats = {
                     entries: parsed.entries || [],
                     total: parsed.total || 0,
-                    counts: parsed.counts || { increase: 0, decrease: 0, hold: 0 }
+                    counts: {
+                        increase: Number(parsed.counts?.increase) || 0,
+                        decrease: Number(parsed.counts?.decrease) || 0
+                    }
                 }
             } catch {
                 /* ignore */
@@ -319,13 +322,13 @@ export function createAffinityStore(options: AffinityStoreOptions) {
         return row as AffinityRecord
     }
 
-    const ensure = async (
+    const ensureForUser = async (
         session: Session,
+        userId: string,
         clampFn: ClampFn,
         fallbackInitial?: number
     ): Promise<AffinityState> => {
         const selfId = session.selfId
-        const userId = session.userId
         if (!selfId || !userId) return extractState(null)
 
         const existing = await load(selfId, userId)
@@ -350,11 +353,18 @@ export function createAffinityStore(options: AffinityStoreOptions) {
         return { ...extractState(null), ...initialState, isNew: true }
     }
 
+    const ensure = async (
+        session: Session,
+        clampFn: ClampFn,
+        fallbackInitial?: number
+    ): Promise<AffinityState> => ensureForUser(session, session.userId || '', clampFn, fallbackInitial)
+
     return {
         clamp: clampValue,
         save,
         load,
         ensure,
+        ensureForUser,
         defaultInitial,
         randomInitial,
         initialRange,

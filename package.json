@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-chatluna-affinity",
 "description": "为 ChatLuna Character 提供更多变量及工具，例如 {好感度}、{关系}、{日程}、{天气}、{用户信息}、{机器人信息}、{群信息}等变量并提供对应的工具调用和低好感自动拉黑功能。",
-  "version": "0.2.2-alpha.13",
+  "version": "0.2.3-alpha.1",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -11,8 +11,10 @@
   ],
   "license": "MIT",
   "scripts": {
-    "build": "tsup && node --max-old-space-size=12288 ./node_modules/typescript/lib/tsc.js --emitDeclarationOnly --outDir lib --skipLibCheck && vite build",
+    "build": "tsup && node --max-old-space-size=16384 ./node_modules/typescript/lib/tsc.js --emitDeclarationOnly --outDir lib --skipLibCheck && vite build",
+    "build:server": "tsup && node --max-old-space-size=16384 ./node_modules/typescript/lib/tsc.js --emitDeclarationOnly --outDir lib --skipLibCheck",
     "build:client": "vite build",
+    "build:parallel": "npm run build:server & npm run build:client; wait",
     "watch": "tsup --watch",
     "clean": "rimraf lib dist"
   },
@@ -33,11 +35,11 @@
   },
   "peerDependencies": {
     "koishi": "^4.18.7",
-    "koishi-plugin-chatluna": "^1.3.0",
-    "koishi-plugin-chatluna-character": "^0.0.182",
+    "koishi-plugin-chatluna": "*",
+    "koishi-plugin-chatluna-character": "*",
     "@koishijs/plugin-console": "^5.30.0",
     "koishi-plugin-puppeteer": "^3.0.0",
-    "koishi-plugin-chatluna-group-analysis": "^0.0.1"
+    "koishi-plugin-chatluna-group-analysis": "*"
   },
   "peerDependenciesMeta": {
     "koishi-plugin-chatluna-character": {
@@ -64,7 +66,7 @@
   },
   "dependencies": {
     "@langchain/core": "^0.3.62",
-    "koishi-plugin-chatluna": "^1.3.0-alpha.78",
+    "koishi-plugin-chatluna": "*",
     "zod": "^3.23.8"
   }
 }

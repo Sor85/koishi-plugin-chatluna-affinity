@@ -10,7 +10,7 @@ import { RelationshipSchema } from './relationship'
 import { ScheduleSchema } from './schedule'
 import { WeatherSchema } from './weather'
 import { OtherVariablesSchema } from './variables'
-import { OneBotToolsSchema, OtherCommandsSchema, OtherSettingsSchema } from './tools'
+import { NativeToolsSchema, XmlToolsSchema, OtherCommandsSchema, OtherSettingsSchema } from './tools'
 
 export * from './affinity'
 export * from './blacklist'
@@ -33,8 +33,9 @@ export const ConfigSchema = Schema.intersect([
     RelationshipSchema,
     ScheduleSchema,
     WeatherSchema,
+    NativeToolsSchema,
+    XmlToolsSchema,
     OtherVariablesSchema,
-    OneBotToolsSchema,
     OtherCommandsSchema,
     OtherSettingsSchema
 ])

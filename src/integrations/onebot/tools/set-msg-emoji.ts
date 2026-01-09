@@ -6,6 +6,7 @@
 import { z } from 'zod'
 import { StructuredTool } from '@langchain/core/tools'
 import type { LogFn } from '../../../types'
+import type { Session } from 'koishi'
 import { ensureOneBotSession, callOneBotAPI } from '../api'
 import { getSession } from '../../chatluna/tools/types'
 
@@ -14,7 +15,46 @@ export interface SetMsgEmojiToolDeps {
     log?: LogFn
 }
 
-export function createSetMsgEmojiTool(deps: SetMsgEmojiToolDeps) {
+export interface SendMsgEmojiParams {
+    session: Session | null
+    messageId: string
+    emojiId: string
+    log?: LogFn
+}
+
+export async function sendMsgEmoji(params: SendMsgEmojiParams): Promise<string> {
+    try {
+        const { session, messageId, emojiId, log } = params
+        if (!session) return 'No session context available.'
+        if (session.platform !== 'onebot') return 'This tool only supports OneBot platform.'
+
+        const messageIdRaw = messageId.trim()
+        const emojiIdRaw = emojiId.trim()
+        if (!messageIdRaw) return 'message_id is required.'
+        if (!emojiIdRaw) return 'emoji_id is required.'
+
+        const numericMessageId = /^\d+$/.test(messageIdRaw) ? Number(messageIdRaw) : messageIdRaw
+
+        const { error, internal } = ensureOneBotSession(session)
+        if (error) return error
+
+        await callOneBotAPI(
+            internal!,
+            'set_msg_emoji_like',
+            { message_id: numericMessageId, emoji_id: emojiIdRaw },
+            ['setMsgEmojiLike']
+        )
+
+        const success = `Emoji ${emojiIdRaw} sent to message ${messageIdRaw}.`
+        log?.('info', success)
+        return success
+    } catch (error) {
+        params.log?.('warn', 'set_msg_emoji failed', error)
+        return `set_msg_emoji failed: ${(error as Error).message}`
+    }
+}
+
+export function createSetMsgEmojiTool(deps: SetMsgEmojiToolDeps): StructuredTool {
     const { toolName, log } = deps
 
     // @ts-ignore - Type instantiation depth issue with zod + StructuredTool
@@ -35,37 +75,8 @@ export function createSetMsgEmojiTool(deps: SetMsgEmojiToolDeps) {
             _manager?: unknown,
             runnable?: unknown
         ) {
-            try {
-                const session = getSession(runnable)
-                if (!session) return 'No session context available.'
-                if (session.platform !== 'onebot') return 'This tool only supports OneBot platform.'
-
-                const messageIdRaw = input.messageId.trim()
-                const emojiIdRaw = input.emojiId.trim()
-                if (!messageIdRaw) return 'message_id is required.'
-                if (!emojiIdRaw) return 'emoji_id is required.'
-
-                const numericMessageId = /^\d+$/.test(messageIdRaw)
-                    ? Number(messageIdRaw)
-                    : messageIdRaw
-
-                const { error, internal } = ensureOneBotSession(session)
-                if (error) return error
-
-                await callOneBotAPI(
-                    internal!,
-                    'set_msg_emoji_like',
-                    { message_id: numericMessageId, emoji_id: emojiIdRaw },
-                    ['setMsgEmojiLike']
-                )
-
-                const success = `Emoji ${emojiIdRaw} sent to message ${messageIdRaw}.`
-                log?.('info', success)
-                return success
-            } catch (error) {
-                log?.('warn', 'set_msg_emoji failed', error)
-                return `set_msg_emoji failed: ${(error as Error).message}`
-            }
+            const session = getSession(runnable)
+            return sendMsgEmoji({ session, messageId: input.messageId, emojiId: input.emojiId, log })
         }
-    })()
+    })() as StructuredTool
 }

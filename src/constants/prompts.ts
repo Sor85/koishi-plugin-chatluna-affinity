@@ -1,31 +1,7 @@
 /**
  * 提示词模板
- * 包含好感度分析、日程生成等 LLM 提示词
- * 变量须与原代码保持一致，确保功能兼容
+ * 包含日程生成等 LLM 提示词
  */
-
-export const ANALYSIS_PROMPT = `你是好感度管家，评估本次互动的增减幅度，并遵守以下要求:
-- 以 \`人设\` 视角出发以第一人称描述"我"的真实情绪；
-- 以 \`人设\` 为基础，以 \`本次用户消息\` 和 \`本次Bot回复\` 为事实依据，参考 \`上下文\` 给出本次好感度的增减，重点考虑 \`本次Bot回复\` 的情绪语气和心情。
-- 若 \`本次Bot回复\` 已明确给出好感度增减/倾向（如 delta/action/提升或降低表述），直接以 \`本次Bot回复\` 中的增减倾向为准，避免输出与 \`本次Bot回复\` 相冲突的结果。
-- 只有当用户提供与人设高度契合、具体且有价值的善意时才 increase；例行寒暄、无实质贡献或刻意讨好保持 hold；触犯禁忌、造成负面情绪、敷衍或反复冒犯时 decrease；
-- 最近 {recentActionWindowHours} 小时内聊天次数 {chatCount}，动作统计: {recentActionCountsText}，若提升/降低刷屏应警惕刷分或持续冒犯；
-- 单次提升不超过 {maxIncreasePerMessage} ，单词减少不超过 {maxDecreasePerMessage}；
-- 输出前再次验证 action 是否符合上下文与阈值逻辑，并简述我为何 increase/decrease/hold；
-- 仅输出 JSON：{"delta": 整数, "action": "increase|decrease|hold", "reason": "简短中文原因"}。
-
-用于参考的背景信息:
-人设：{persona}
-当前关系: {currentRelationship}
-当前好感度: {currentAffinity}（范围 {minAffinity} ~ {maxAffinity}）
-上下文:
-{historyText}
-
-本次用户消息：
-{userMessage}
-
-本次Bot回复：
-{botReply}`
 
 export const SCHEDULE_PROMPT = `你是一名擅长写作日常作息的助理，需要基于角色人设生成今日全日计划和穿搭。
 今天是 {date}（{weekday}）。
@@ -53,5 +29,4 @@ export const SCHEDULE_PROMPT = `你是一名擅长写作日常作息的助理，
 
 export const BLACKLIST_REPLY_TEMPLATE = ''
 
-export const DEFAULT_ANALYSIS_PROMPT = ANALYSIS_PROMPT
 export const DEFAULT_SCHEDULE_PROMPT = SCHEDULE_PROMPT

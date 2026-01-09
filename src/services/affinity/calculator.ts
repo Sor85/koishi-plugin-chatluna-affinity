@@ -18,8 +18,8 @@ import { clampFloat } from '../../utils'
 
 function normalizeAction(action: unknown): ActionType {
     const text = typeof action === 'string' ? action.toLowerCase() : ''
-    if (text === 'increase' || text === 'decrease' || text === 'hold') return text
-    return 'hold'
+    if (text === 'increase' || text === 'decrease') return text
+    return 'increase'
 }
 
 export function resolveShortTermConfig(config: Config): ResolvedShortTermConfig {
@@ -102,14 +102,14 @@ export function summarizeActionEntries(
 ): SummarizedActions {
     const fallback: SummarizedActions = {
         entries: [],
-        counts: { increase: 0, decrease: 0, hold: 0 },
+        counts: { increase: 0, decrease: 0 },
         total: 0
     }
     if (!Array.isArray(rawEntries)) return fallback
 
     const cutoff = nowMs - windowMs
     const entries: ActionEntry[] = []
-    const counts = { increase: 0, decrease: 0, hold: 0 }
+    const counts = { increase: 0, decrease: 0 }
 
     for (const entry of rawEntries) {
         if (!entry) continue
@@ -120,7 +120,7 @@ export function summarizeActionEntries(
         counts[normalizedAction] += 1
     }
 
-    return { entries, counts, total: counts.increase + counts.decrease + counts.hold }
+    return { entries, counts, total: counts.increase + counts.decrease }
 }
 
 export function appendActionEntry(
@@ -212,14 +212,9 @@ export function composeState(
     }
 }
 
-export function formatActionCounts(counts: {
-    increase?: number
-    decrease?: number
-    hold?: number
-}): string {
+export function formatActionCounts(counts: { increase?: number; decrease?: number }): string {
     const safe = counts || {}
     const increase = Number(safe.increase) || 0
     const decrease = Number(safe.decrease) || 0
-    const hold = Number(safe.hold) || 0
-    return `提升 ${increase} / 降低 ${decrease} / 保持 ${hold}`
+    return `提升 ${increase} / 降低 ${decrease}`
 }

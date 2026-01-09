@@ -7,7 +7,6 @@ import * as path from 'path'
 import { Context, Session } from 'koishi'
 import { ChatLunaPlugin } from 'koishi-plugin-chatluna/services/chat'
 import { getMessageContent } from 'koishi-plugin-chatluna/utils/string'
-import { modelSchema } from 'koishi-plugin-chatluna/utils/schema'
 
 import type { Config, LogFn } from './types'
 import { BASE_AFFINITY_DEFAULTS } from './constants'
@@ -16,6 +15,8 @@ import { createLogger } from './helpers'
 import { stripAtPrefix, renderTemplate, formatTimestamp } from './utils'
 import { createAffinityStore } from './services/affinity/store'
 import { createAffinityCache } from './services/affinity/cache'
+import { resolveShortTermConfig, resolveActionWindowConfig } from './services/affinity/calculator'
+import { applyAffinityDelta } from './services/affinity/apply-delta'
 import { createMessageHistory } from './services/message/history'
 import { createMessageStore } from './services/message/store'
 import { createPermanentBlacklistManager } from './services/blacklist/permanent'
@@ -23,7 +24,6 @@ import { createTemporaryBlacklistManager } from './services/blacklist/temporary'
 import { createBlacklistGuard } from './services/blacklist/guard'
 import { createLevelResolver } from './services/relationship/level-resolver'
 import { createManualRelationshipManager } from './services/relationship/manual-config'
-import { createAnalysisMiddleware } from './services/analysis'
 import { createScheduleManager } from './services/schedule'
 import { createRenderService } from './renders'
 import {
@@ -44,13 +44,13 @@ import {
     createBlacklistTool,
     createWeatherTool
 } from './integrations/chatluna/tools'
-import { createPokeTool } from './integrations/onebot/tools/poke'
+import { createPokeTool, sendPoke } from './integrations/onebot/tools/poke'
 import { createSetProfileTool } from './integrations/onebot/tools/profile'
 import { createSetGroupCardTool } from './integrations/onebot/tools/set-group-card'
-import { createSetMsgEmojiTool } from './integrations/onebot/tools/set-msg-emoji'
+import { createSetMsgEmojiTool, sendMsgEmoji } from './integrations/onebot/tools/set-msg-emoji'
 import { createFakeMessageTool } from './integrations/onebot/tools/send-fake-msg'
 import { createForwardMessageTool } from './integrations/onebot/tools/send-forward-msg'
-import { createDeleteMessageTool } from './integrations/onebot/tools/delete-msg'
+import { createDeleteMessageTool, sendDeleteMessage } from './integrations/onebot/tools/delete-msg'
 import {
     registerRankCommand,
     registerInspectCommand,
@@ -110,7 +110,6 @@ export function apply(ctx: Context, config: Config): void {
 
     // @ts-expect-error - Config type compatibility with ChatLunaPlugin
     const plugin = new ChatLunaPlugin(ctx, config, 'affinity', false)
-    modelSchema(ctx)
 
     ctx.inject(['console'], (innerCtx) => {
         const consoleService = (
@@ -127,6 +126,8 @@ export function apply(ctx: Context, config: Config): void {
     log('warn', '⚠️ 升级提示：0.2.1-alpha.10 版本后数据库结构已重构，若出现数据库相关错误，请执行 affinity.clearall 命令清除数据后重试。好感度分析提示词与日程生成提示词已更新，若您自定义过提示词，请将其恢复默认以应用最新版本。')
     const cache = createAffinityCache()
     const store = createAffinityStore({ ctx, config, log })
+    const shortTermConfig = resolveShortTermConfig(config)
+    const actionWindowConfig = resolveActionWindowConfig(config)
     const history = createMessageHistory({ ctx, config, log })
     const messageStore = createMessageStore({ ctx, log, limit: 100 })
     const levelResolver = createLevelResolver(config)
@@ -181,10 +182,12 @@ export function apply(ctx: Context, config: Config): void {
     }
     const weatherApi = createWeatherApi({ ctx, weatherConfig, log })
 
+    let modelRef: { value?: unknown } | unknown
+
     const scheduleManager = createScheduleManager(ctx, config, {
         getModel: () => (modelRef as { value?: unknown })?.value ?? modelRef ?? null,
         getMessageContent: getMessageContent as (content: unknown) => string,
-        resolvePersonaPreset: () => resolvePersonaPreset(),
+        resolvePersonaPreset: () => '',
         getWeatherText: () => weatherApi.getDailyWeather(),
         renderSchedule: renders.schedule,
         log
@@ -209,97 +212,9 @@ export function apply(ctx: Context, config: Config): void {
     })
     ctx.middleware(blacklistGuard.middleware as Parameters<typeof ctx.middleware>[0], true)
 
-    let modelRef: { value?: unknown } | unknown
-    const getModel = () => (modelRef as { value?: unknown })?.value ?? modelRef ?? null
-
-    const resolvePersonaPreset = (session?: Session): string => {
-        const source = config.personaSource || 'none'
-        const chatluna = (
-            ctx as unknown as {
-                chatluna?: {
-                    preset?: { getPreset?: (name: string) => { value?: unknown } }
-                    personaPrompt?: string
-                }
-            }
-        ).chatluna
-        if (source === 'chatluna') {
-            let presetName = String(config.personaChatlunaPreset ?? '').trim()
-            if (presetName === '无') presetName = ''
-            if (presetName) {
-                const presetRef = chatluna?.preset?.getPreset?.(presetName)
-                const presetValue = presetRef?.value as
-                    | { rawText?: string; config?: { prompt?: string } }
-                    | string
-                    | undefined
-                if (typeof presetValue === 'string') return presetValue
-                if (typeof (presetValue as { rawText?: string })?.rawText === 'string')
-                    return (presetValue as { rawText: string }).rawText
-                if ((presetValue as { config?: { prompt?: string } })?.config?.prompt)
-                    return (presetValue as { config: { prompt: string } }).config.prompt
-            }
-            return chatluna?.personaPrompt || ''
-        }
-        if (source === 'custom') return String(config.personaCustomPreset ?? '').trim()
-        return ''
-    }
-
-    const analysisSystem = createAnalysisMiddleware(ctx, config, {
-        store: {
-            clamp: store.clamp,
-            ensure: async (session, clampFn) => {
-                const result = await store.ensure(session, clampFn)
-                return result as unknown as Record<string, unknown>
-            },
-            save: store.save as unknown as (seed: { platform: string; userId: string; selfId?: string; session?: Session }, value: number, relation: string, extra?: Record<string, unknown>) => Promise<unknown>,
-            composeState: (longTerm: number, shortTerm: number) => {
-                const affinity = Math.round(longTerm)
-                return { affinity, longTermAffinity: Math.round(longTerm), shortTermAffinity: Math.round(shortTerm) }
-            },
-            isBlacklisted: (platform: string, userId: string) => {
-                return permanentBlacklist.isBlacklisted(platform, userId) || !!temporaryBlacklist.isBlocked(platform, userId)
-            },
-            isTemporarilyBlacklisted: (platform: string, userId: string) => {
-                const entry = temporaryBlacklist.isTemporarilyBlacklisted(platform, userId)
-                return entry ? { expiresAt: entry.expiresAt || '' } : null
-            },
-            findManualRelationship: (platform: string, userId: string) => {
-                return manualRelationship.find(platform, userId)
-            },
-            resolveLevelByAffinity: levelResolver.resolveLevelByAffinity,
-            recordBlacklist: (platform: string, userId: string, detail?: Record<string, unknown>) => {
-                permanentBlacklist.record(platform, userId, { nickname: detail?.nickname as string, note: detail?.note as string })
-                return true
-            }
-        },
-        history: { fetch: history.fetch.bind(history) },
-        cache,
-        getModel: getModel as () => { invoke?: (prompt: string) => Promise<{ content?: unknown }> } | null,
-        renderTemplate: renderTemplate as (template: string, variables: Record<string, unknown>) => string,
-        getMessageContent: getMessageContent as (content: unknown) => string,
-        log,
-        resolvePersonaPreset,
-        temporaryBlacklist: {
-            isBlocked: (platform: string, userId: string) => {
-                const entry = temporaryBlacklist.isBlocked(platform, userId)
-                return entry ? { platform, odUserId: userId, nickname: entry.nickname || '', expiresAt: entry.expiresAt } : null
-            },
-            activate: (platform: string, userId: string, nickname: string, now: Date) => {
-                const result = temporaryBlacklist.activate(platform, userId, nickname, now)
-                return {
-                    activated: result.activated,
-                    entry: result.entry ? { platform, odUserId: userId, nickname, expiresAt: result.entry.expiresAt } : null
-                }
-            },
-            clear: (platform: string, userId: string) => {
-                temporaryBlacklist.clear(platform, userId)
-            }
-        },
-        shortTermOptions
-    })
-    ctx.middleware(analysisSystem.middleware as Parameters<typeof ctx.middleware>[0])
-
     let rawModelResponseGuildId: string | null = null
-    const rawModelResponseMap = new Map<string, string>()
+    const rawModelResponseSessionMap = new Map<string, Session>()
+    let lastCharacterSession: Session | null = null
     let rawInterceptorRetryHandle: (() => void) | null = null
 
     const initRawModelInterceptor = (): boolean => {
@@ -313,11 +228,17 @@ export function apply(ctx: Context, config: Config): void {
                 }
             }
         ).chatluna_character
-
         if (!characterService) return false
 
         characterService.collect?.(async (session: Session) => {
-            rawModelResponseGuildId = (session as unknown as { guildId?: string })?.guildId || session?.channelId || null
+            const guildId =
+                (session as unknown as { guildId?: string })?.guildId ||
+                session?.channelId ||
+                session?.userId ||
+                null
+            rawModelResponseGuildId = guildId
+            if (guildId) rawModelResponseSessionMap.set(guildId, session)
+            lastCharacterSession = session
         })
 
         const characterLogger = characterService.logger
@@ -329,10 +250,124 @@ export function apply(ctx: Context, config: Config): void {
             const message = args[0]
             if (typeof message === 'string' && message.startsWith('model response: ')) {
                 const response = message.substring('model response: '.length)
-                if (rawModelResponseGuildId && response) {
-                    rawModelResponseMap.set(rawModelResponseGuildId, response)
-                    if (config.debugLogging) {
-                        log('debug', '拦截到原始输出', { guildId: rawModelResponseGuildId, length: response.length })
+                if (!rawModelResponseGuildId || !response) return
+                if (config.debugLogging) {
+                    log('debug', '拦截到原始输出', {
+                        guildId: rawModelResponseGuildId,
+                        length: response.length
+                    })
+                }
+
+                const affinityMatches = Array.from(
+                    response.matchAll(/<affinity\s+delta="([^"]+)"\s+action="(increase|decrease)"\s+id="([^"]+)"\s*\/>/gi)
+                )
+                if (config.affinityEnabled && affinityMatches.length) {
+                    const session =
+                        rawModelResponseSessionMap.get(rawModelResponseGuildId) ||
+                        lastCharacterSession ||
+                        null
+                    if (session) {
+                        for (const match of affinityMatches) {
+                            const delta = parseInt(String(match[1] || '0').trim(), 10)
+                            const action = String(match[2] || 'increase').trim().toLowerCase() as 'increase' | 'decrease'
+                            const userId = String(match[3] || '').trim()
+                            if (!isNaN(delta) && delta > 0 && userId) {
+                                void applyAffinityDelta({
+                                    session,
+                                    userId,
+                                    delta,
+                                    action,
+                                    store: {
+                                        ensureForUser: store.ensureForUser,
+                                        save: store.save as (seed: { platform: string; userId: string; selfId?: string; session?: Session }, value: number, relation: string, extra?: Record<string, unknown>) => Promise<unknown>,
+                                        clamp: store.clamp
+                                    },
+                                    levelResolver: { resolveLevelByAffinity: levelResolver.resolveLevelByAffinity },
+                                    maxIncrease: config.maxIncreasePerMessage || 5,
+                                    maxDecrease: config.maxDecreasePerMessage || 3,
+                                    maxActionEntries: actionWindowConfig.maxEntries,
+                                    shortTermConfig,
+                                    log
+                                })
+                            }
+                        }
+                    } else {
+                        log('warn', '检测到好感度标记但缺少会话上下文', {
+                            guildId: rawModelResponseGuildId
+                        })
+                    }
+                }
+
+                if (config.enablePokeXmlTool) {
+                    const pokeMatches = Array.from(
+                        response.matchAll(/<poke\s+id="([^"]+)"\s*\/>/gi)
+                    )
+                    if (pokeMatches.length) {
+                        const targetIds = Array.from(
+                            new Set(pokeMatches.map((match) => String(match[1] || '').trim()).filter(Boolean))
+                        )
+                        const session = rawModelResponseSessionMap.get(rawModelResponseGuildId) || null
+                        if (session && targetIds.length) {
+                            for (const userId of targetIds) {
+                                void sendPoke({ session, userId, log })
+                            }
+                        } else if (targetIds.length) {
+                            log('warn', '检测到戳一戳标记但缺少会话上下文', {
+                                guildId: rawModelResponseGuildId
+                            })
+                        }
+                    }
+                }
+
+                if (config.enableEmojiXmlTool) {
+                    const emojiMatches = Array.from(
+                        response.matchAll(
+                            /<emoji\s+message_id="([^"]+)"\s+emoji_id="([^"]+)"\s*\/>/gi
+                        )
+                    )
+                    if (emojiMatches.length) {
+                        const session = rawModelResponseSessionMap.get(rawModelResponseGuildId) || null
+                        if (session) {
+                            for (const match of emojiMatches) {
+                                const messageId = String(match[1] || '').trim()
+                                const emojiId = String(match[2] || '').trim()
+                                if (messageId && emojiId) {
+                                    void sendMsgEmoji({ session, messageId, emojiId, log })
+                                }
+                            }
+                        } else {
+                            log('warn', '检测到表情标记但缺少会话上下文', {
+                                guildId: rawModelResponseGuildId
+                            })
+                        }
+                    }
+                }
+
+                if (config.enableDeleteXmlTool) {
+                    const deleteMatches = Array.from(
+                        response.matchAll(/<delete\s+message_id="([^"]+)"\s*\/?>/gi)
+                    )
+                    if (deleteMatches.length) {
+                        const session =
+                            rawModelResponseSessionMap.get(rawModelResponseGuildId) ||
+                            lastCharacterSession ||
+                            null
+                        if (session) {
+                            const ids = Array.from(
+                                new Set(
+                                    deleteMatches
+                                        .map((match) => String(match[1] || '').trim())
+                                        .filter(Boolean)
+                                )
+                            )
+                            for (const messageId of ids) {
+                                void sendDeleteMessage({ session, messageId, log })
+                            }
+                        } else {
+                            log('warn', '检测到撤回标记但缺少会话上下文', {
+                                guildId: rawModelResponseGuildId
+                            })
+                        }
                     }
                 }
             }
@@ -357,57 +392,17 @@ export function apply(ctx: Context, config: Config): void {
         }, 10 * 60 * 1000)
     }
 
-    if (config.useRawModelResponse) {
-        const startDelay = 3000
-        log('debug', `原始输出拦截将在 ${startDelay}ms 后启动`)
-        ctx.setTimeout(() => {
-            if (initRawModelInterceptor()) {
-                log('info', '已启用原始输出拦截模式')
-            } else {
-                log('warn', 'chatluna_character 服务不可用，将每10分钟重试一次')
-                startRawInterceptorRetry()
-            }
-        }, startDelay)
-    }
-
-    ctx.on('before-send', (session) => {
-        if (!config.enableAnalysis) return
-        try {
-            const guildId = (session as unknown as { guildId?: string })?.guildId || session?.channelId || ''
-
-            if (config.useRawModelResponse && guildId && rawModelResponseMap.has(guildId)) {
-                const rawResponse = rawModelResponseMap.get(guildId)!
-                rawModelResponseMap.delete(guildId)
-                if (rawResponse) {
-                    analysisSystem.addBotReply(session as Session, rawResponse)
-                    return
-                }
-            }
-
-            const rawContent = (session as unknown as { content?: unknown }).content
-            if (!rawContent) return
-
-            const extractText = (content: unknown): string => {
-                if (!content) return ''
-                if (typeof content === 'string') return content
-                if (Array.isArray(content)) return content.map(extractText).filter(Boolean).join('')
-                if (typeof content === 'object') {
-                    const el = content as { type?: string; attrs?: { content?: string }; children?: unknown }
-                    if (el.type === 'text') return el.attrs?.content || ''
-                    if (el.children) return extractText(el.children)
-                }
-                return ''
-            }
-
-            let botReply = extractText(rawContent)
-            if (botReply) {
-                botReply = botReply.replace(/<[^>]+>/g, '').trim()
-                if (botReply) analysisSystem.addBotReply(session as Session, botReply)
-            }
-        } catch (error) {
-            log('warn', 'before-send事件处理异常', error)
+    const startDelay = 3000
+    log('debug', `原始输出拦截将在 ${startDelay}ms 后启动`)
+    ctx.setTimeout(() => {
+        if (initRawModelInterceptor()) {
+            log('info', '已启用原始输出拦截模式')
+        } else {
+            log('warn', 'chatluna_character 服务不可用，将每10分钟重试一次')
+            startRawInterceptorRetry()
         }
-    })
+    }, startDelay)
+
 
     const fetchMemberBound = (session: Session, userId: string) => fetchMember(session, userId)
     const resolveUserIdentityBound = (session: Session, input: string) =>
@@ -465,7 +460,7 @@ export function apply(ctx: Context, config: Config): void {
         ).chatluna
         try {
             modelRef = await chatlunaService?.createChatModel?.(
-                config.model || chatlunaService?.config?.defaultModel || ''
+                chatlunaService?.config?.defaultModel || ''
             )
         } catch (error) {
             log('warn', '模型初始化失败', error)

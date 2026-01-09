@@ -33,10 +33,7 @@ export interface MessageHistoryOptions {
 export function createMessageHistory(options: MessageHistoryOptions) {
     const { ctx, config, log } = options
     const cache = new Map<string, HistoryEntry[]>()
-    const limit = Math.max(
-        (config.historyMessageCount || 0) * FETCH_CONSTANTS.HISTORY_LIMIT_MULTIPLIER,
-        FETCH_CONSTANTS.MIN_HISTORY_LIMIT
-    )
+    const limit = FETCH_CONSTANTS.MIN_HISTORY_LIMIT
 
     const formatTimestamp = (value: number): string => {
         const date = new Date(value)
@@ -132,16 +129,8 @@ export function createMessageHistory(options: MessageHistoryOptions) {
         }
     }
 
-    const fetch = async (session: Session): Promise<string[]> => {
-        const count = config.historyMessageCount || 0
-        if (count <= 0) return []
-        const entries = await readEntries(session, count)
-        return entries.map((item) => {
-            const name = item.username || item.userId || '未知用户'
-            const idText = item.userId ? `（${item.userId}）` : ''
-            const timeText = formatTimestamp(item.timestamp)
-            return `[${timeText}] ${name}${idText}: ${item.content}`
-        })
+    const fetch = async (_session: Session): Promise<string[]> => {
+        return []
     }
 
     const fetchEntries = async (session: Session, count: number): Promise<HistoryEntry[]> => {

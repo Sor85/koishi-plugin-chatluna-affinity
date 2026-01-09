@@ -18,7 +18,7 @@ export interface AffinityRecord {
     coefficientState: string | null
 }
 
-export type ActionType = 'increase' | 'decrease' | 'hold'
+export type ActionType = 'increase' | 'decrease'
 
 export interface ActionEntry {
     action: ActionType
@@ -28,7 +28,6 @@ export interface ActionEntry {
 export interface ActionCounts {
     increase: number
     decrease: number
-    hold: number
 }
 
 export interface ActionStats {

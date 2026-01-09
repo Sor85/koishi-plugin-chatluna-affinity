@@ -26,8 +26,9 @@ export const NAV_SECTIONS: NavSection[] = [
     { title: '关系设置', key: 'relationship' },
     { title: '日程设置', key: 'schedule' },
     { title: '天气设置', key: 'weather' },
+    { title: '原生工具', key: 'nativeTools' },
+    { title: 'XML 工具', key: 'xmlTools' },
     { title: '其他变量', key: 'otherVariables' },
-    { title: '其他工具', key: 'otherTools' },
     { title: '其他指令', key: 'otherCommands' },
     { title: '其他设置', key: 'otherSettings' }
 ]
@@ -38,8 +39,9 @@ export const TITLE_TO_KEY: Record<string, string> = {
     '关系设置': 'relationship',
     '日程设置': 'schedule',
     '天气设置': 'weather',
+    原生工具: 'nativeTools',
+    'XML 工具': 'xmlTools',
     '其他变量': 'otherVariables',
-    '其他工具': 'otherTools',
     '其他指令': 'otherCommands',
     '其他设置': 'otherSettings'
 }
@@ -50,8 +52,9 @@ export const KEY_TO_TITLE: Record<string, string> = {
     relationship: '关系设置',
     schedule: '日程设置',
     weather: '天气设置',
+    nativeTools: '原生工具',
+    xmlTools: 'XML 工具',
     otherVariables: '其他变量',
-    otherTools: '其他工具',
     otherCommands: '其他指令',
     otherSettings: '其他设置'
 }

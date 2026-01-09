@@ -46,6 +46,7 @@ export interface Config {
     setGroupCardToolName?: string
     enableDeleteMessageTool?: boolean
     deleteMessageToolName?: string
+    enableDeleteXmlTool?: boolean
     panSouTool?: {
         enablePanSouTool?: boolean
         panSouToolName?: string

@@ -117,18 +117,15 @@ export interface OtherVariablesConfig {
 }
 
 export interface Config {
+    affinityEnabled: boolean
     affinityVariableName: string
     contextAffinityOverview: ContextAffinityOverviewConfig
     baseAffinityConfig: BaseAffinityConfig
     initialRandomMin: number
     initialRandomMax: number
-    model: string
-    analysisPrompt: string
     maxIncreasePerMessage: number
     maxDecreasePerMessage: number
     affinityDynamics: AffinityDynamicsConfig
-    enableAnalysis: boolean
-    useRawModelResponse: boolean
     enableAutoBlacklist: boolean
     blacklistThreshold: number
     blacklistLogInterception: boolean
@@ -137,16 +134,13 @@ export interface Config {
     temporaryBlacklist: TemporaryBlacklistEntry[]
     shortTermBlacklist: ShortTermBlacklistConfig
     debugLogging: boolean
-    triggerNicknames: string[]
-    historyMessageCount: number
-    personaSource: 'none' | 'chatluna' | 'custom'
-    personaChatlunaPreset: string
-    personaCustomPreset: string
     userInfo: UserInfoConfig
     botInfo: BotInfoConfig
     groupInfo: GroupInfoConfig
     enablePokeTool: boolean
     pokeToolName: string
+    enablePokeXmlTool: boolean
+    enableEmojiXmlTool: boolean
     enableSetSelfProfileTool: boolean
     setSelfProfileToolName: string
     enableSetGroupCardTool: boolean
@@ -159,6 +153,7 @@ export interface Config {
     fakeMessageToolName: string
     enableDeleteMessageTool: boolean
     deleteMessageToolName: string
+    enableDeleteXmlTool: boolean
     random: RandomConfig
     relationshipVariableName: string
     relationshipAffinityLevelVariableName: string
@@ -171,6 +166,7 @@ export interface Config {
     registerRelationshipTool: boolean
     relationshipToolName: string
     rankDefaultLimit: number
+    characterPromptTemplate: string
     rankRenderAsImage: boolean
     blacklistDefaultLimit: number
     blacklistRenderAsImage: boolean

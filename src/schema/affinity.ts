@@ -4,7 +4,7 @@
  */
 
 import { Schema } from 'koishi'
-import { BASE_AFFINITY_DEFAULTS, DEFAULT_ANALYSIS_PROMPT } from '../constants'
+import { BASE_AFFINITY_DEFAULTS } from '../constants'
 
 const AffinityDynamicsSchema = Schema.object({
     shortTerm: Schema.object({
@@ -58,6 +58,7 @@ const AffinityDynamicsSchema = Schema.object({
 }).description('好感度动态设置')
 
 export const AffinitySchema = Schema.object({
+    affinityEnabled: Schema.boolean().default(true).description('启用好感度系统'),
     affinityVariableName: Schema.string().default('affinity').description('好感度变量名称'),
     contextAffinityOverview: Schema.object({
         variableName: Schema.string().default('contextAffinity').description('变量名称'),
@@ -80,36 +81,35 @@ export const AffinitySchema = Schema.object({
         actionWindow: { windowHours: 24, increaseBonus: 2, decreaseBonus: 2, bonusChatThreshold: 10, allowBonusOverflow: false, maxEntries: 80 },
         coefficient: { base: 1, maxDrop: 0.3, maxBoost: 0.3, decayPerDay: 0.05, boostPerDay: 0.05 }
     }).collapse(),
-    model: Schema.dynamic('model').description('用于好感度分析的模型'),
-    enableAnalysis: Schema.boolean().default(true).description('是否启用好感度分析'),
-    useRawModelResponse: Schema.boolean().default(false).description('使用 chatluna-character 的原始输出替代 {botReply}'),
-    historyMessageCount: Schema.number().default(10).min(0).description('用于分析的最近消息条数'),
     rankRenderAsImage: Schema.boolean().default(false).description('将好感度排行渲染为图片'),
     rankDefaultLimit: Schema.number().default(10).min(1).max(50).description('好感度排行默认展示人数'),
-    triggerNicknames: Schema.array(Schema.string().description('昵称'))
-        .role('table')
-        .default([])
-        .description('触发分析的 bot 昵称列表'),
-    analysisPrompt: Schema.string()
+    characterPromptTemplate: Schema.string()
         .role('textarea')
-        .default(DEFAULT_ANALYSIS_PROMPT)
-        .description('好感度分析提示词'),
-    personaSource: Schema.union([
-        Schema.const('none').description('不注入预设'),
-        Schema.const('chatluna').description('使用 ChatLuna 主插件预设'),
-        Schema.const('custom').description('使用自定义预设')
-    ]).default('none').description('人设注入来源'),
-    personaChatlunaPreset: Schema.dynamic('preset')
-        .default('无')
-        // @ts-expect-error - Koishi Schema hidden accepts callback at runtime
-        .hidden((_: unknown, cfg: { personaSource?: string } | undefined) => (cfg?.personaSource || 'none') !== 'chatluna')
-        .description('当选择主插件预设时，指定要注入的 ChatLuna 预设'),
-    personaCustomPreset: Schema.string()
-        .role('textarea')
-        .default('')
-        // @ts-expect-error - Koishi Schema hidden accepts callback at runtime
-        .hidden((_: unknown, cfg: { personaSource?: string } | undefined) => (cfg?.personaSource || 'none') !== 'custom')
-        .description('当选择自定义预设时注入的文本内容'),
+        .default(
+`## 动作指令
+你可以根据需要创建一个 \`<actions>\` 元素。它用于执行非语言的系统指令。如果不需要执行任何动作，请省略此元素。
+1. **戳一戳**: \`<poke id="user_id" />\`
+   - **适用场景**:
+     - 当你想引起某人的注意时。
+     - 当对方说了让你感到无语、无视你、或者你想通过肢体互动调侃对方时。
+     - 作为一种俏皮的打招呼方式。
+2. **表情回应**: \`<emoji message_id="message_id" emoji_id="emoji_id" />\`
+   - 用于对上下文中的特定消息进行表情回应。
+   - **emoji_id 对应表**:
+     - 424: 赞同 (红色按钮)
+     - 10068: 问号
+     - 265: 逆天 (地铁老人手机)
+     - 76: 点赞
+     - 66: 爱心
+3. **撤回消息**: \`<delete message_id="message_id" />\`
+   - 用于撤回指定消息。
+4. **好感度更新**: \`<affinity delta="5" action="increase" id="user_id"/>\`
+   - delta: 好感度变化量（正整数）
+   - action: increase 或 decrease
+   - id: 目标用户 ID`
+        )
+        .description('将以下提示词复制到你的 chatluna-character 提示词中')
+        .collapse(),
     registerAffinityTool: Schema.boolean().default(false).description('注册 ChatLuna 工具：调整好感度'),
     affinityToolName: Schema.string().default('adjust_affinity').description('ChatLuna 工具名称：调整好感度')
 }).description('好感度设置')

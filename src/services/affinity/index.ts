@@ -6,3 +6,4 @@
 export * from './cache'
 export * from './calculator'
 export * from './store'
+export * from './apply-delta'
