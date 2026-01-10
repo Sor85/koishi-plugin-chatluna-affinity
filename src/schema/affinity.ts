@@ -87,7 +87,7 @@ export const AffinitySchema = Schema.object({
         .role('textarea')
         .default(
 `## 动作指令
-你可以根据需要创建一个 \`<actions>\` 元素。它用于执行非语言的系统指令。如果不需要执行任何动作，请省略此元素。
+你可以根据需要创建一个独立的 \`<actions>\` 元素。它用于执行非语言的系统指令。如果不需要执行任何动作，请省略此元素。
 1. **戳一戳**: \`<poke id="user_id" />\`
    - **适用场景**:
      - 当你想引起某人的注意时。
@@ -106,7 +106,17 @@ export const AffinitySchema = Schema.object({
 4. **好感度更新**: \`<affinity delta="5" action="increase" id="user_id"/>\`
    - delta: 好感度变化量（正整数）
    - action: increase 或 decrease
-   - id: 目标用户 ID`
+   - id: 目标用户 ID
+
+**格式示例**:
+\`\`\`xml
+  <actions>
+    <poke id="129345425" />
+    <emoji message_id="346234" emoji_id="66" />
+    <delete message_id="435663" />
+    <affinity delta="5" action="increase" id="1345425"/>
+  </actions>
+\`\`\``
         )
         .description('将以下提示词复制到你的 chatluna-character 提示词中')
         .collapse(),

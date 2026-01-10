@@ -182,10 +182,16 @@ export function apply(ctx: Context, config: Config): void {
     }
     const weatherApi = createWeatherApi({ ctx, weatherConfig, log })
 
-    let modelRef: { value?: unknown } | unknown
+    let scheduleModelRef: { value?: unknown } | unknown
+    let defaultModelRef: { value?: unknown } | unknown
 
     const scheduleManager = createScheduleManager(ctx, config, {
-        getModel: () => (modelRef as { value?: unknown })?.value ?? modelRef ?? null,
+        getModel: () =>
+            (scheduleModelRef as { value?: unknown })?.value ??
+            scheduleModelRef ??
+            (defaultModelRef as { value?: unknown })?.value ??
+            defaultModelRef ??
+            null,
         getMessageContent: getMessageContent as (content: unknown) => string,
         resolvePersonaPreset: () => '',
         getWeatherText: () => weatherApi.getDailyWeather(),
@@ -458,12 +464,23 @@ export function apply(ctx: Context, config: Config): void {
                 }
             }
         ).chatluna
+
+        const scheduleModelName = String(config.schedule?.model || '').trim()
+
+        if (scheduleModelName) {
+            try {
+                scheduleModelRef = await chatlunaService?.createChatModel?.(scheduleModelName)
+            } catch (error) {
+                log('warn', `日程模型 ${scheduleModelName} 初始化失败`, error)
+            }
+        }
+
         try {
-            modelRef = await chatlunaService?.createChatModel?.(
+            defaultModelRef = await chatlunaService?.createChatModel?.(
                 chatlunaService?.config?.defaultModel || ''
             )
         } catch (error) {
-            log('warn', '模型初始化失败', error)
+            log('warn', '默认模型初始化失败', error)
         }
 
         const promptRenderer = chatlunaService?.promptRenderer

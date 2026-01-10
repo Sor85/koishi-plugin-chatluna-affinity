@@ -1,6 +1,5 @@
 node_modules
-.AGENTS
 dist
 lib
-tsconfig.tsbuildinfo
 AGENTS.md
+STYLE_GUIDE.md

@@ -5,6 +5,7 @@
 
 export interface ScheduleConfig {
     enabled: boolean
+    model?: string
     variableName: string
     currentVariableName: string
     outfitVariableName: string

@@ -9,6 +9,9 @@ import { DEFAULT_SCHEDULE_PROMPT } from '../constants'
 export const ScheduleSchema = Schema.object({
     schedule: Schema.object({
         enabled: Schema.boolean().default(true).description('是否启用日程功能'),
+        model: Schema.dynamic('model')
+            .default('')
+            .description('日程生成使用的模型，留空则使用 ChatLuna 默认模型'),
         variableName: Schema.string().default('schedule').description('今日日程变量名称'),
         currentVariableName: Schema.string().default('currentSchedule').description('当前日程变量名称'),
         outfitVariableName: Schema.string().default('outfit').description('今日穿搭变量名称'),
@@ -25,6 +28,7 @@ export const ScheduleSchema = Schema.object({
     })
         .default({
             enabled: true,
+            model: '',
             variableName: 'schedule',
             currentVariableName: 'currentSchedule',
             outfitVariableName: 'outfit',

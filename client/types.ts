@@ -18,6 +18,7 @@ export interface Config {
     relationshipToolName?: string
     schedule?: {
         enabled?: boolean
+        model?: string
         variableName?: string
         currentVariableName?: string
         registerTool?: boolean
