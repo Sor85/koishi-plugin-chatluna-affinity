@@ -37,7 +37,7 @@ function resolveVariableNames(config: CommandDependencies['config']) {
         config.random?.variableName || config.otherVariables?.random?.variableName || 'random'
     )
 
-    if (config.weather?.enabled && config.weather?.apiToken) {
+    if (config.weather?.enabled) {
         push('天气变量', config.weather.variableName || 'weather')
     }
 
@@ -68,7 +68,7 @@ function resolveToolNames(config: CommandDependencies['config']) {
     if (config.enablePokeTool) {
         tools.push(`戳一戳工具：${(config.pokeToolName || 'poke_user').trim()}`)
     }
-    if (config.weather?.enabled && config.weather?.apiToken && config.weather?.registerTool) {
+    if (config.weather?.enabled && config.weather?.registerTool) {
         tools.push(`天气工具：${(config.weather.toolName || 'get_weather').trim() || 'get_weather'}`)
     }
     if (config.enableSetSelfProfileTool) {

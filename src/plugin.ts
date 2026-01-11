@@ -182,6 +182,40 @@ export function apply(ctx: Context, config: Config): void {
     }
     const weatherApi = createWeatherApi({ ctx, weatherConfig, log })
 
+    const resolveSchedulePersonaPreset = (_session?: Session): string => {
+        const scheduleCfg = config.schedule || {}
+        const source = scheduleCfg.personaSource || 'none'
+        const chatluna = (
+            ctx as unknown as {
+                chatluna?: {
+                    preset?: { getPreset?: (name: string) => { value?: unknown } }
+                    personaPrompt?: string
+                }
+            }
+        ).chatluna
+
+        if (source === 'chatluna') {
+            let presetName = String(scheduleCfg.personaChatlunaPreset ?? '').trim()
+            if (presetName === '无') presetName = ''
+            if (presetName) {
+                const presetRef = chatluna?.preset?.getPreset?.(presetName)
+                const presetValue = presetRef?.value
+                if (typeof presetValue === 'string') return presetValue
+                const rawText = (presetValue as { rawText?: string })?.rawText
+                if (typeof rawText === 'string') return rawText
+                const configPrompt = (presetValue as { config?: { prompt?: string } })?.config?.prompt
+                if (typeof configPrompt === 'string') return configPrompt
+            }
+            return chatluna?.personaPrompt || ''
+        }
+
+        if (source === 'custom') {
+            return String(scheduleCfg.personaCustomPreset ?? '').trim()
+        }
+
+        return ''
+    }
+
     let scheduleModelRef: { value?: unknown } | unknown
     let defaultModelRef: { value?: unknown } | unknown
 
@@ -193,7 +227,7 @@ export function apply(ctx: Context, config: Config): void {
             defaultModelRef ??
             null,
         getMessageContent: getMessageContent as (content: unknown) => string,
-        resolvePersonaPreset: () => '',
+        resolvePersonaPreset: () => resolveSchedulePersonaPreset(),
         getWeatherText: () => weatherApi.getDailyWeather(),
         renderSchedule: renders.schedule,
         log
@@ -571,7 +605,7 @@ export function apply(ctx: Context, config: Config): void {
             log('info', `随机数变量已注册: ${randomName}`)
         }
 
-        if (weatherConfig.enabled && weatherConfig.apiToken) {
+        if (weatherConfig.enabled) {
             const weatherProvider = createWeatherProvider({ weatherApi })
             const weatherVariableName = String(weatherConfig.variableName || 'weather').trim()
             if (weatherVariableName) {
@@ -629,7 +663,7 @@ export function apply(ctx: Context, config: Config): void {
             log('info', `戳一戳工具已注册: ${toolName}`)
         }
 
-        if (weatherConfig.enabled && weatherConfig.apiToken && weatherConfig.registerTool) {
+        if (weatherConfig.enabled && weatherConfig.registerTool) {
             const weatherToolName = String(weatherConfig.toolName || 'get_weather').trim() || 'get_weather'
             plugin.registerTool(weatherToolName, {
                 selector: () => true,

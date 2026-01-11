@@ -19,6 +19,9 @@ export interface Config {
     schedule?: {
         enabled?: boolean
         model?: string
+        personaSource?: 'none' | 'chatluna' | 'custom'
+        personaChatlunaPreset?: string
+        personaCustomPreset?: string
         variableName?: string
         currentVariableName?: string
         registerTool?: boolean

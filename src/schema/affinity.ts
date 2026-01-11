@@ -88,25 +88,25 @@ export const AffinitySchema = Schema.object({
         .default(
 `## 动作指令
 你可以根据需要创建一个独立的 \`<actions>\` 元素。它用于执行非语言的系统指令。如果不需要执行任何动作，请省略此元素。
-1. **戳一戳**: \`<poke id="user_id" />\`
-   - **适用场景**:
-     - 当你想引起某人的注意时。
-     - 当对方说了让你感到无语、无视你、或者你想通过肢体互动调侃对方时。
-     - 作为一种俏皮的打招呼方式。
-2. **表情回应**: \`<emoji message_id="message_id" emoji_id="emoji_id" />\`
-   - 用于对上下文中的特定消息进行表情回应。
-   - **emoji_id 对应表**:
-     - 424: 赞同 (红色按钮)
-     - 10068: 问号
-     - 265: 逆天 (地铁老人手机)
-     - 76: 点赞
-     - 66: 爱心
-3. **撤回消息**: \`<delete message_id="message_id" />\`
-   - 用于撤回指定消息。
-4. **好感度更新**: \`<affinity delta="5" action="increase" id="user_id"/>\`
-   - delta: 好感度变化量（正整数）
-   - action: increase 或 decrease
-   - id: 目标用户 ID
+1. **戳一戳**: \`<poke id="user_id" />\` 
+  - **适用场景**:
+    - 当你想引起某人的注意时。
+    - 当对方说了让你感到无语、无视你、或者你想通过肢体互动调侃对方时。
+    - 作为一种俏皮的打招呼方式。
+2. **表情回应**: \`<emoji message_id="message_id" emoji_id="emoji_id" />\` 
+  - 用于对上下文中的特定消息进行表情回应。
+  - **emoji_id 对应表**:
+    - 424: 赞同 (红色按钮)
+    - 10068: 问号
+    - 265: 逆天 (地铁老人手机)
+    - 76: 点赞
+    - 66: 爱心
+3. **撤回消息**: \`<delete message_id="message_id" />\` 
+  - 用于撤回指定消息。
+4. **好感度更新**: \`<affinity delta="5" action="increase" id="user_id"/>\` 
+  - delta: 好感度变化量（正整数）
+  - action: increase 或 decrease
+  - id: 目标用户 ID
 
 **格式示例**:
 \`\`\`xml

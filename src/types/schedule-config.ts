@@ -6,6 +6,9 @@
 export interface ScheduleConfig {
     enabled: boolean
     model?: string
+    personaSource?: 'none' | 'chatluna' | 'custom'
+    personaChatlunaPreset?: string
+    personaCustomPreset?: string
     variableName: string
     currentVariableName: string
     outfitVariableName: string

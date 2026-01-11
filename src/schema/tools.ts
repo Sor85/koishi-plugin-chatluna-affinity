@@ -67,10 +67,12 @@ export const XmlToolsSchema = Schema.object({
         .description('启用 XML 形式的戳一戳调用（解析 &lt;poke id=""/&gt;）'),
     enableEmojiXmlTool: Schema.boolean()
         .default(false)
-        .description('启用 XML 形式的消息表情调用（解析 &lt;emoji message_id="" emoji_id=""/&gt;）'),
+        .description(
+            '启用 XML 形式的消息表情调用（解析 &lt;emoji message_id="" emoji_id=""/&gt;，需 chatluna-character 开启 enableMessageId，可用表情 ID 见 https://bot.q.qq.com/wiki/develop/gosdk/model/emoji ）'
+        ),
     enableDeleteXmlTool: Schema.boolean()
         .default(false)
-        .description('启用 XML 形式的消息撤回调用（解析 &lt;delete message_id=""/&gt;）')
+        .description('启用 XML 形式的消息撤回调用（解析 &lt;delete message_id=""/&gt;，需 chatluna-character 开启 enableMessageId）')
 }).description('XML 工具')
 
 export const OtherCommandsSchema = Schema.object({
